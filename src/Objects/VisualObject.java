@@ -14,6 +14,7 @@ public class VisualObject {
     protected Image image;
     protected Boolean visible = true;
     protected Boolean held = false;
+    public Boolean moveable = true;
 
     public VisualObject(int x, int y, int width, int height, String imgPath) {
         this.x = x;
@@ -43,7 +44,12 @@ public class VisualObject {
         if (imgPath != null){
         try {
             // Load the new image
-            this.image = ImageIO.read(new File(this.imgPath));
+            File file = new File(this.imgPath);
+            if (!file.exists()) {
+                System.out.println("Image file does not exist: " + this.imgPath);
+                return;
+            }
+            this.image = ImageIO.read(file);
         } catch (IOException e) {
             System.out.println("Image could not be loaded.");
             e.printStackTrace();
@@ -90,18 +96,9 @@ public class VisualObject {
     // Meant to be overridden by child classes, but ALWAYS CALL DRAW() !!!!
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
         this.draw(g);
-        this.baseTickFunc(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
-        this.specTickFunc(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+        
     }
     
     
-    //Child classes override
-    public void baseTickFunc(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
-
-    }
-
-    //Child classes override
-    public void specTickFunc(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
-
-    }
+    
 }

@@ -1,8 +1,6 @@
 package Objects.PlayerClasses;
 
 import Objects.VisualObject;
-import java.awt.Graphics;
-import java.util.Set;
 
 public class Player extends VisualObject{
     protected int health;
@@ -12,10 +10,9 @@ public class Player extends VisualObject{
     protected int overHealExpireTime = -1;
     protected double rollSpeed = 1;
     public Player(int x, int y, int maxHealth) {
-        super (x, y, "src/Images/player-tank.jpg");
+        super (x, y, "images/rus.jpg");
         this.health = maxHealth;
     }
-    
     public void attack(){}
     
     public void hurt(int damage){
@@ -45,8 +42,5 @@ public class Player extends VisualObject{
         return this.health;
     }
 
-    @Override
-    public void specTickFunc(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
-
-    }
+    
 }

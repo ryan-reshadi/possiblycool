@@ -24,14 +24,14 @@ public class App extends JPanel {
             public void mousePressed(MouseEvent e) {
                 clickXDown = e.getX();
                 clickYDown = e.getY();
-                System.out.println("Mouse clicked at (" + clickXDown + ", " + clickYDown + ")");
+                // System.out.println("Mouse clicked at (" + clickXDown + ", " + clickYDown + ")");
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 clickXUp = e.getX();
                 clickYUp = e.getY();
-                System.out.println("Mouse released at (" + clickXUp + ", " + clickYUp + ")");
+                // System.out.println("Mouse released at (" + clickXUp + ", " + clickYUp + ")");
             }
         });
 

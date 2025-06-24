@@ -5,7 +5,7 @@ public class TankPlayer extends Player {
     public TankPlayer(int x, int y) {
         super(x, y, 150);
         this.rollSpeed = 0.5;
-        this.setImgPath("src/Images/tank-player.png");
+        this.setImgPath("images/player-tank.jpg");
     }
 
     @Override

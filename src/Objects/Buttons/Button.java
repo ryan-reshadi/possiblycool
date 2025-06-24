@@ -13,6 +13,7 @@ public class Button extends VisualObject {
         this.game = game;
         this.label = label;
         this.color = color;
+        this.moveable = false; // Buttons are not moveable by default
     }
     @Override
     public void draw(Graphics g) {
@@ -29,18 +30,21 @@ public class Button extends VisualObject {
     public boolean isClicked(int clickX, int clickY) {
         return this.checkCollision(clickX, clickY);
     }
-    
+
     @Override
-    public void baseTickFunc(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
+        this.draw(g);
         if (this.isClicked(clickXDown, clickYDown)) {
             if (this.notCurrentlyHeld) {
                 this.buttonAction();
                 this.held = true;
                 this.notCurrentlyHeld = false;
+                // System.out.println("Button " + this.label + " clicked." );
             }
         } else if (clickXUp != -1 && clickYUp != -1) {
             this.held = false;
             this.notCurrentlyHeld = true;
+            // System.out.println("Button " + this.label + " released." );
         }
 
     }

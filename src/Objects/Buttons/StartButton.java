@@ -1,6 +1,7 @@
 package Objects.Buttons;
 
 import GameRun.Game;
+import GameRun.GameStates;
 
 public class StartButton extends Button {
     public StartButton(int x, int y, int width, int height, Game game) {
@@ -9,7 +10,6 @@ public class StartButton extends Button {
 
     @Override
     public void buttonAction() {
-        System.out.println("Starting the game...");
-        this.game.changeState("GameStarted.0");
+        this.game.changeState(GameStates.GAME_STARTED_0);
     }
 }

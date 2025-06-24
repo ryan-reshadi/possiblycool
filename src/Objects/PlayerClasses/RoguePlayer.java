@@ -5,7 +5,7 @@ public class RoguePlayer extends Player {
     public RoguePlayer(int x, int y) {
         super(x, y, 75);
         this.rollSpeed = 1.5;
-        this.setImgPath("src/Images/rogue-player.png");
+        // this.setImgPath("images/rogue-player.jpg");
     }
 
     @Override
