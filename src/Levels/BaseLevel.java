@@ -30,8 +30,8 @@ public class BaseLevel {
         }
     }
 
-    public void tick() {
-
+    public void tick(Graphics g) {
+        this.draw(g);
     }
 
     public void draw(Graphics g) {

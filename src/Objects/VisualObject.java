@@ -56,6 +56,15 @@ public class VisualObject {
         }
     }
     }
+    public void scaleImage (int newWidth, int newHeight) {
+        if (this.image != null) {
+            this.image = this.image.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
+            this.width = newWidth;
+            this.height = newHeight;
+        } else {
+            System.out.println("Image not set, cannot scale.");
+        }
+    }
 
     public void setVisible() {
         this.visible = true;
@@ -80,6 +89,16 @@ public class VisualObject {
                 && this.x + this.width > other.x
                 && this.y < other.y + other.height
                 && this.y + this.height > other.y;
+    }
+
+    public boolean checkCollision (VisualObject other, int offsetX, int offsetY) {
+        if (!this.visible || !other.visible) {
+            return false;
+        }
+        return this.x + offsetX < other.x + other.width
+                && this.x + this.width + offsetX > other.x
+                && this.y + offsetY < other.y + other.height
+                && this.y + this.height + offsetY > other.y;
     }
 
     public boolean checkCollision(int x, int y) {

@@ -24,16 +24,22 @@ public class Game {
         }
     }
     
-
+    private void bgRect(Graphics g) {
+        g.fillRect(0, 0, 2000, 1300);
+    }
     public void screenUpdate(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
         switch (this.state) {
             case INITIALIZED_1:
                 g.setColor(Color.GRAY);
-                g.fillRect(0, 0, 2000, 1300);
+                this.bgRect(g);
                 break;
             case GAME_STARTED_0:
                 g.setColor(Color.LIGHT_GRAY);
-                g.fillRect(0, 0, 2000, 1300);
+                this.bgRect(g);
+                break;
+            case LEVEL_1:
+                g.setColor(Color.DARK_GRAY);
+                this.bgRect(g);
                 break;
             default:
                 System.out.println("Unknown state: " + this.state);
@@ -52,10 +58,14 @@ public class Game {
                 }
                 break;
             case INITIALIZED_1:
-
                 break;
+
             case GAME_STARTED_0:
                 break;
+            
+            case LEVEL_1:
+                break;
+            
             default:
                 System.out.println("State not recognized (switch from): " + this.state);
         }
@@ -75,7 +85,10 @@ public class Game {
 
                 break;
             case LEVEL_1:
-            
+                this.visualObjects.clear();
+                this.visualObjects.add(this.player);
+                this.player.scaleImage(75, 75);
+                break;
             default:
                 System.out.println("State not recognized (switch to): " + this.state);
         }
