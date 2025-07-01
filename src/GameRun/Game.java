@@ -5,6 +5,7 @@ import Objects.PlayerClasses.Player;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Set;
+
 public class Game {
 
     private int tickCount = 0;
@@ -12,21 +13,39 @@ public class Game {
     public ArrayList<VisualObject> visualObjects = new ArrayList<>(); // Example array of visual objects
     public Player player;
 
+    private final ArrayList<VisualObject> toAdd = new ArrayList<>();
+    private final ArrayList<VisualObject> toRemove = new ArrayList<>();
+
     public Game() {
         this.state = GameStates.INITIALIZED_0;
         this.changeState(GameStates.INITIALIZED_1);
+        // Immediately process any objects added by changeState
+        this.visualObjects.addAll(this.toAdd);
+        this.toAdd.clear();
     }
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
         this.tickCount++;
-        for (var i = this.visualObjects.size() - 1; i >= 0; i--) {
-            this.visualObjects.get(i).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
+        if (visualObjects.isEmpty()) {
+            // System.out.println("No visual objects to tick.");
+            return;
         }
+        for (int i = this.visualObjects.size() - 1; i >= 0; i--) {
+            this.visualObjects.get(i).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
+            // System.out.println("Ticking object: " + this.visualObjects.get(i).getClass().getSimpleName());
+            // System.out.println("# of visual objects: " + this.visualObjects.size());
+        }
+        visualObjects.removeAll(this.toRemove);
+        this.toRemove.clear();
+
+        visualObjects.addAll(this.toAdd);
+        this.toAdd.clear();
     }
-    
+
     private void bgRect(Graphics g) {
         g.fillRect(0, 0, 2000, 1300);
     }
+
     public void screenUpdate(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
         switch (this.state) {
             case INITIALIZED_1:
@@ -43,7 +62,7 @@ public class Game {
                 break;
             default:
                 System.out.println("Unknown state: " + this.state);
-            
+
         }
         this.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp);
     }
@@ -62,31 +81,32 @@ public class Game {
 
             case GAME_STARTED_0:
                 break;
-            
+
             case LEVEL_1:
                 break;
-            
+
             default:
                 System.out.println("State not recognized (switch from): " + this.state);
         }
         this.state = newState;
         switch (this.state) {
             case INITIALIZED_1:
-                this.visualObjects.add(new Objects.Buttons.StartButton(50, 50, 200, 100, this));
+                this.toAdd.add(new Objects.Buttons.StartButton(50, 50, 200, 100, this));
                 // System.out.println("Start Button added");
 
                 break;
 
             case GAME_STARTED_0:
-                this.visualObjects.clear();
-                this.visualObjects.add(new Objects.Buttons.ClassSelectionButtons.RogueButton(200, 400, 100, 50, this));
-                this.visualObjects.add(new Objects.Buttons.ClassSelectionButtons.WizardButton(400, 400, 100, 50, this));
-                this.visualObjects.add(new Objects.Buttons.ClassSelectionButtons.TankButton(600, 400, 100, 50, this));
+                this.toRemove.addAll(this.visualObjects);
+
+                this.toAdd.add(new Objects.Buttons.ClassSelectionButtons.RogueButton(200, 400, 100, 50, this));
+                this.toAdd.add(new Objects.Buttons.ClassSelectionButtons.WizardButton(400, 400, 100, 50, this));
+                this.toAdd.add(new Objects.Buttons.ClassSelectionButtons.TankButton(600, 400, 100, 50, this));
 
                 break;
             case LEVEL_1:
-                this.visualObjects.clear();
-                this.visualObjects.add(this.player);
+                this.toRemove.addAll(this.visualObjects);
+                this.toAdd.add(this.player);
                 this.player.scaleImage(75, 75);
                 break;
             default:

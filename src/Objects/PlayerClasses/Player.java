@@ -1,12 +1,14 @@
 package Objects.PlayerClasses;
 
 import Objects.VisualObject;
+import java.awt.Graphics;
+import java.util.Set;
 
 public class Player extends VisualObject{
     protected int health;
     protected int maxHealth;
     protected int overHealAmount = 0;
-    protected int speed = 5;
+    protected double speed = 1.5;
     protected int overHealExpireTime = -1;
     protected double rollSpeed = 1;
     public Player(int x, int y, int maxHealth) {
@@ -42,5 +44,23 @@ public class Player extends VisualObject{
         return this.health;
     }
 
-    
+    public void keyHandler(Set<Integer> pressedKeys){
+        if (pressedKeys.contains(87)) { // W key
+            this.y -= this.speed;
+        }
+        if (pressedKeys.contains(83)) { // S key
+            this.y += this.speed;
+        }
+        if (pressedKeys.contains(65)) { // A key
+            this.x -= this.speed;
+        }
+        if (pressedKeys.contains(68)) { // D key
+            this.x += this.speed;
+        }
+    }
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
+        this.draw(g);
+        this.keyHandler(pressedKeys);
+        this.checkOverHeal(tickCount);
+    }
 }
