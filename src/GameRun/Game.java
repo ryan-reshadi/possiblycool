@@ -1,5 +1,6 @@
 package GameRun;
 
+import Levels.*;
 import Objects.*;
 import Objects.PlayerClasses.Player;
 import java.awt.*;
@@ -15,6 +16,8 @@ public class Game {
 
     private final ArrayList<VisualObject> toAdd = new ArrayList<>();
     private final ArrayList<VisualObject> toRemove = new ArrayList<>();
+
+    private BaseLevel currentLevel;
 
     public Game() {
         this.state = GameStates.INITIALIZED_0;
@@ -40,6 +43,9 @@ public class Game {
 
         visualObjects.addAll(this.toAdd);
         this.toAdd.clear();
+        if (this.currentLevel != null){
+            this.currentLevel.tick(g);
+        }
     }
 
     private void bgRect(Graphics g) {
@@ -106,8 +112,8 @@ public class Game {
                 break;
             case LEVEL_1:
                 this.toRemove.addAll(this.visualObjects);
-                this.toAdd.add(this.player);
-                this.player.scaleImage(75, 75);
+                
+                
                 break;
             default:
                 System.out.println("State not recognized (switch to): " + this.state);

@@ -117,7 +117,4 @@ public class VisualObject {
         this.draw(g);
         
     }
-    
-    
-    
 }
