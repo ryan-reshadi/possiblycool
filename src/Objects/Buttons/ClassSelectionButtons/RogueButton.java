@@ -3,11 +3,12 @@ package Objects.Buttons.ClassSelectionButtons;
 import GameRun.Game;
 import GameRun.GameStates;
 import Objects.Buttons.Button;
+import java.awt.Color;
 
 
 public class RogueButton extends Button {
     public RogueButton(int x, int y, int width, int height, Game game) {
-        super(x, y, width, height, "Rogue", "#BFD641", game);
+        super(x, y, width, height, "Rogue", Color.decode("#BFD641"), game);
     }
 
     @Override

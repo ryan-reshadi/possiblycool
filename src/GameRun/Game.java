@@ -13,7 +13,6 @@ public class Game {
     protected GameStates state = GameStates.INITIALIZED_0;
     public ArrayList<VisualObject> visualObjects = new ArrayList<>(); // Example array of visual objects
     public Player player;
-
     private final ArrayList<VisualObject> toAdd = new ArrayList<>();
     private final ArrayList<VisualObject> toRemove = new ArrayList<>();
 
@@ -29,10 +28,6 @@ public class Game {
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
         this.tickCount++;
-        if (visualObjects.isEmpty()) {
-            // System.out.println("No visual objects to tick.");
-            return;
-        }
         for (int i = this.visualObjects.size() - 1; i >= 0; i--) {
             this.visualObjects.get(i).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
             // System.out.println("Ticking object: " + this.visualObjects.get(i).getClass().getSimpleName());
@@ -43,8 +38,8 @@ public class Game {
 
         visualObjects.addAll(this.toAdd);
         this.toAdd.clear();
-        if (this.currentLevel != null){
-            this.currentLevel.tick(g);
+        if (this.currentLevel != null) {
+            this.currentLevel.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
         }
     }
 
@@ -64,7 +59,7 @@ public class Game {
                 break;
             case LEVEL_1:
                 g.setColor(Color.DARK_GRAY);
-                this.bgRect(g);
+                // this.bgRect(g);
                 break;
             default:
                 System.out.println("Unknown state: " + this.state);
@@ -112,8 +107,8 @@ public class Game {
                 break;
             case LEVEL_1:
                 this.toRemove.addAll(this.visualObjects);
-                
-                
+                this.currentLevel = new Level1(0, 0, this.player);
+
                 break;
             default:
                 System.out.println("State not recognized (switch to): " + this.state);

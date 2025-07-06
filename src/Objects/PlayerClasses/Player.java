@@ -8,7 +8,7 @@ public class Player extends VisualObject{
     protected int health;
     protected int maxHealth;
     protected int overHealAmount = 0;
-    protected double speed = 1.5;
+    protected int speed = 1;
     protected int overHealExpireTime = -1;
     protected double rollSpeed = 1;
     public Player(int x, int y, int maxHealth) {
@@ -59,6 +59,8 @@ public class Player extends VisualObject{
         }
     }
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
+        this.width = 50; // Set width for collision detection
+        this.height = 50; // Set height for collision detection
         this.draw(g);
         this.keyHandler(pressedKeys);
         this.checkOverHeal(tickCount);

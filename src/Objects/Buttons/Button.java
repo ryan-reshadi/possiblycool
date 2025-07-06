@@ -2,14 +2,16 @@ package Objects.Buttons;
 
 import GameRun.Game;
 import Objects.VisualObject;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.util.Set;
 public class Button extends VisualObject {
-    private String label, color;
+    private String label;
+    private Color color;
     protected Game game;
     protected Boolean notCurrentlyHeld = true;
-    public Button(int x, int y, int width, int height, String label, String color, Game game) {
-        super(x, y, width, height, null);
+    public Button(int x, int y, int width, int height, String label, Color color, Game game) {
+        super(x, y, width, height, color);
         this.game = game;
         this.label = label;
         this.color = color;
@@ -19,7 +21,7 @@ public class Button extends VisualObject {
     public void draw(Graphics g) {
         if (this.visible) {
             // Draw the button rectangle
-            g.setColor(java.awt.Color.decode(color));
+            g.setColor(this.color);
             g.fillRect(this.x, this.y, this.width, this.height);
             // Draw the label text
             g.setColor(java.awt.Color.BLACK);

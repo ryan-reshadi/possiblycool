@@ -75,13 +75,13 @@ public class App extends JPanel {
         super.paintComponent(g);
         this.tick(g);
 
-        g.drawString("Keys currently pressed: ", 10, 20);
-        int y = 40;
-        for (int keyCode : pressedKeys) {
-            String keyName = KeyEvent.getKeyText(keyCode);
-            g.drawString("- " + keyName, 10, y);
-            y += 20;
-        }
+        // g.drawString("Keys currently pressed: ", 10, 20);
+        // int y = 40;
+        // for (int keyCode : pressedKeys) {
+        //     String keyName = KeyEvent.getKeyText(keyCode);
+        //     g.drawString("- " + keyName, 10, y);
+        //     y += 20;
+        // }
         game.screenUpdate(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp);
         // g.drawString("Tick count: " + tickCount, 150, 20);
     }

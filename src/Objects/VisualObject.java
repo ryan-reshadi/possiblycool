@@ -1,5 +1,6 @@
 package Objects;
 
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.io.File;
@@ -11,17 +12,18 @@ public class VisualObject {
 
     public int x, y, width, height;
     protected String imgPath;
-    protected Image image;
+    protected Image image = null;
     protected Boolean visible = true;
     protected Boolean held = false;
     public Boolean moveable = true;
+    protected Color color = null;
 
     public VisualObject(int x, int y, int width, int height, String imgPath) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        
+
         this.setImgPath(imgPath);
     }
 
@@ -34,6 +36,14 @@ public class VisualObject {
         this.height = this.image.getHeight(null);
     }
 
+    public VisualObject(int x, int y, int width, int height, Color color) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+    }
+
     public void move(int dx, int dy) {
         this.x += dx;
         this.y += dy;
@@ -41,22 +51,23 @@ public class VisualObject {
 
     public void setImgPath(String imgPath) {
         this.imgPath = imgPath;
-        if (imgPath != null){
-        try {
-            // Load the new image
-            File file = new File(this.imgPath);
-            if (!file.exists()) {
-                System.out.println("Image file does not exist: " + this.imgPath);
-                return;
+        if (imgPath != null) {
+            try {
+                // Load the new image
+                File file = new File(this.imgPath);
+                if (!file.exists()) {
+                    System.out.println("Image file does not exist: " + this.imgPath);
+                    return;
+                }
+                this.image = ImageIO.read(file);
+            } catch (IOException e) {
+                System.out.println("Image could not be loaded.");
+                e.printStackTrace();
             }
-            this.image = ImageIO.read(file);
-        } catch (IOException e) {
-            System.out.println("Image could not be loaded.");
-            e.printStackTrace();
         }
     }
-    }
-    public void scaleImage (int newWidth, int newHeight) {
+
+    public void scaleImage(int newWidth, int newHeight) {
         if (this.image != null) {
             this.image = this.image.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
             this.width = newWidth;
@@ -75,9 +86,15 @@ public class VisualObject {
     }
 
     public void draw(Graphics g) {
-        if (this.visible && this.image != null) {
-            // Draw (blit) the image at position (50, 50)
-            g.drawImage(this.image, this.x, this.y, this.width, this.height, null);
+        if (this.visible) {
+            if (this.image != null) {
+                // Draw (blit) the image at position (50, 50)
+                g.drawImage(this.image, this.x, this.y, this.width, this.height, null);
+            }
+            else {
+                g.setColor(this.color != null ? this.color : Color.yellow);
+                g.fillRect(this.x, this.y, this.width, this.height);
+            }
         }
     }
 
@@ -91,7 +108,7 @@ public class VisualObject {
                 && this.y + this.height > other.y;
     }
 
-    public boolean checkCollision (VisualObject other, int offsetX, int offsetY) {
+    public boolean checkCollision(VisualObject other, int offsetX, int offsetY) {
         if (!this.visible || !other.visible) {
             return false;
         }
@@ -105,16 +122,17 @@ public class VisualObject {
         if (!this.visible) {
             return false;
         }
-        if (this.x < x && x < this.x + this.width && this.y < y && y < this.y + this.height){
+        if (this.x < x && x < this.x + this.width && this.y < y && y < this.y + this.height) {
             this.held = true;
             return true;
         }
         this.held = false;
         return false;
     }
+
     // Meant to be overridden by child classes, but ALWAYS CALL DRAW() !!!!
-    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount){
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
         this.draw(g);
-        
+
     }
 }
