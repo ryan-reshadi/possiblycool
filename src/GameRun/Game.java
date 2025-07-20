@@ -44,7 +44,7 @@ public class Game {
     }
 
     private void bgRect(Graphics g) {
-        g.fillRect(0, 0, 2000, 1300);
+        g.fillRect(0, 0, 1900, 1300);
     }
 
     public void screenUpdate(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {

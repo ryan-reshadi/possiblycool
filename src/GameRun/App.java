@@ -50,7 +50,7 @@ public class App extends JPanel {
             }
         });
 
-        Timer timer = new Timer(16, new ActionListener() {
+        Timer timer = new Timer(17, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 repaint();  // request a redraw
@@ -91,7 +91,7 @@ public class App extends JPanel {
         App panel = new App();
 
         frame.add(panel);
-        frame.setSize(2000, 1000);
+        frame.setSize(1900, 1000);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }

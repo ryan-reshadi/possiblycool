@@ -2,14 +2,17 @@ package Levels;
 
 import Objects.*;
 import Objects.Buttons.*;
-import Objects.PlayerClasses.Player;
 import Objects.EnemyClasses.*;
+import Objects.PlayerClasses.Player;
+import Objects.Terrain.*;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
 
@@ -29,15 +32,14 @@ public class BaseLevel {
     protected int offsetY = 0;
     protected Color backgroundColor = null;
 
-    public BaseLevel(int bgX, int bgY, String path, ArrayList<Player> players) {
+    // Queues for deferred add/remove
+    protected List<VisualObject> addList = new LinkedList<>();
+    protected List<VisualObject> removeList = new LinkedList<>();
+
+    public BaseLevel(int bgX, int bgY, String path, ArrayList<VisualObject> players) {
         this.bgX = bgX;
         this.bgY = bgY;
-        this.levelVisualObjects = new ArrayList<>();
-        this.levelVisualObjects.add(new ArrayList<>(players)); // Initialize with one empty row
-        this.player = players.get(0); // Assuming the first player is the main player
-        this.levelVisualObjects.add(new ArrayList<>()); // Row for Wall objects
-        this.levelVisualObjects.add(new ArrayList<>()); // Row for Button objects
-        this.levelVisualObjects.add(new ArrayList<>()); // Row for Enemy objects
+        this.initArrays(players);
         try {
             this.backgroundImage = ImageIO.read(new File(path));
         } catch (IOException e) {
@@ -46,19 +48,54 @@ public class BaseLevel {
         }
         this.initLevel(); // Initialize level-specific elements
     }
-
-    public BaseLevel(Color color, ArrayList<Player> players) {
-        this.levelVisualObjects = new ArrayList<>();
-        this.levelVisualObjects.add(new ArrayList<>(players)); // Initialize with one empty row
-        this.player = players.get(0); // Assuming the first player is the main player
+    public BaseLevel(Color color, ArrayList<VisualObject> players) {
+        this.initArrays(players);
         this.backgroundColor = color;
     }
+    
+    private void initArrays(ArrayList<VisualObject> players){
+        this.levelVisualObjects.add(players); // Row for Player objects
+        this.levelVisualObjects.add(new ArrayList<>()); // Row for Wall objects
+        this.levelVisualObjects.add(new ArrayList<>()); // Row for Enemy objects
+        this.levelVisualObjects.add(new ArrayList<>()); // Row for Button objects
+        this.player = (Player) players.get(0); // Set the main player
+    }
+    // Use this to queue an object for addition
+    public void queueAddVisualObject(VisualObject obj) {
+        if (obj != null) {
+            addList.add(obj);
+        }
+    }
 
+    // Use this to queue an object for removal
+    public void queueRemoveVisualObject(VisualObject obj) {
+        if (obj != null) {
+            removeList.add(obj);
+        }
+    }
+
+    // Call this after iterating over levelVisualObjects to apply changes
+    public void processQueuedVisualObjectChanges() {
+        // Remove objects
+        for (VisualObject obj : removeList) {
+            for (ArrayList<VisualObject> row : levelVisualObjects) {
+                row.remove(obj);
+            }
+        }
+        removeList.clear();
+
+        // Add objects
+        for (VisualObject obj : addList) {
+            addVisualObject(obj);
+        }
+        addList.clear();
+    }
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
         // Draw level elements
         this.drawBG(g);
         this.updateOffset();
+        this.keyHandler(pressedKeys);
         for (ArrayList<VisualObject> row : this.levelVisualObjects) {
             for (VisualObject obj : row) {
                 if (obj != null) {
@@ -66,6 +103,17 @@ public class BaseLevel {
                 }
             }
         }
+        g.setColor(Color.WHITE);
+        if (player.x<100 && player.y<100) {
+            g.drawString("Health: " + this.player.getHealth(), 10, 20);
+            g.drawString ("Rolls: " + this.player.rolls, 10, 30);
+
+        } else {
+            g.drawString("Health: " + this.player.getHealth(), 1800, 900);
+            g.drawString("Rolls: " + this.player.rolls, 1800, 920);
+        }
+        // After iteration, process queued changes
+        this.processQueuedVisualObjectChanges();
         // System.out.println("BaseLevel tick: " + tickCount);
     }
 
@@ -74,14 +122,14 @@ public class BaseLevel {
             g.drawImage(this.backgroundImage, this.bgX, this.bgY, null);
         } else {
             g.setColor(this.backgroundColor != null ? this.backgroundColor : java.awt.Color.GRAY);
-            g.fillRect(this.bgX, this.bgY, 2000, 1000);
+            g.fillRect(this.bgX, this.bgY, 1900, 1000);
         }
     }
     public void addVisualObject(VisualObject obj) {
         if (obj != null) {
             if (obj instanceof Button){
                 this.levelVisualObjects.get(3).add(obj); // Add to Button row
-            } else if (obj instanceof Wall) {
+            } else if (obj instanceof Border) {
                 this.levelVisualObjects.get(1).add(obj); // Add to Wall row
             } else if (obj instanceof Enemy) {
                 this.levelVisualObjects.get(2).add(obj); // Add to Enemy row
@@ -89,6 +137,95 @@ public class BaseLevel {
                 this.levelVisualObjects.get(0).add(obj); // Add to Player row
             }
         }
+    }
+    public void keyHandler(Set<Integer> pressedKeys) {
+        int nextX = player.getX();
+        int nextY = player.getY();
+        int speed = (int) player.getSpeed();
+
+        int moveX = 0;
+        int moveY = 0;
+        
+        if (pressedKeys.contains(82) && player.rolls > 0) { // R
+            if (pressedKeys.contains(65)) { // A
+                moveX -= 100*speed;
+            }
+            if (pressedKeys.contains(68)) { // D
+                moveX += 100*speed;
+            }
+            if (pressedKeys.contains(87)) { // W
+                moveY -= 100*speed;
+            }
+            if (pressedKeys.contains(83)) { // S
+                moveY += 100*speed;
+            }
+            player.rollCooldown(1, 0, 180); // Start roll cooldown
+        }
+        if (pressedKeys.contains(65)) { // A
+            moveX -= speed;
+        }
+        if (pressedKeys.contains(68)) { // D
+            moveX += speed;
+        }
+        if (pressedKeys.contains(87)) { // W
+            moveY -= speed;
+        }
+        if (pressedKeys.contains(83)) { // S
+            moveY += speed;
+        }
+        
+
+        // Try to move as close as possible to the border
+        int finalX = nextX;
+        int finalY = nextY;
+
+        // Move in X direction
+        if (moveX != 0) {
+            int stepX = moveX > 0 ? 1 : -1;
+            for (int i = 0; i < Math.abs(moveX); i++) {
+                int testX = finalX + stepX;
+                boolean collides = false;
+                for (VisualObject obj : this.levelVisualObjects.get(1)) {
+                    if (obj instanceof Border) {
+                        if (testX < obj.getX() + obj.getWidth() &&
+                            testX + player.getWidth() > obj.getX() &&
+                            finalY < obj.getY() + obj.getHeight() &&
+                            finalY + player.getHeight() > obj.getY()) {
+                            collides = true;
+                            break;
+                        }
+                    }
+                }
+                if (collides) break;
+                finalX = testX;
+            }
+        }
+
+        // Move in Y direction
+        if (moveY != 0) {
+            int stepY = moveY > 0 ? 1 : -1;
+            for (int i = 0; i < Math.abs(moveY); i++) {
+                int testY = finalY + stepY;
+                boolean collides = false;
+                for (VisualObject obj : this.levelVisualObjects.get(1)) {
+                    if (obj instanceof Border) {
+                        if (finalX < obj.getX() + obj.getWidth() &&
+                            finalX + player.getWidth() > obj.getX() &&
+                            testY < obj.getY() + obj.getHeight() &&
+                            testY + player.getHeight() > obj.getY()) {
+                            collides = true;
+                            break;
+                        }
+                    }
+                }
+                if (collides) break;
+                finalY = testY;
+            }
+        }
+
+        player.setX(finalX);
+        player.setY(finalY);
+        // else: do not move player
     }
     protected void updateOffset() {
         if (!this.levelVisualObjects.get(0).isEmpty() && this.player instanceof Player && this.playerOnBorder()) {
@@ -104,7 +241,7 @@ public class BaseLevel {
                         }
                     }
                 }
-            } else if (this.player.getX() > 2000 - this.buffer) {
+            } else if (this.player.getX() > 1900 - this.buffer) {
                 if (this.backgroundImage != null) {
                     this.bgX -= this.player.getSpeed();
                 }
@@ -145,7 +282,7 @@ public class BaseLevel {
     }
     protected boolean playerOnBorder() {
         return (this.player.getX() < this.buffer
-                || this.player.getX() > 2000 - this.buffer
+                || this.player.getX() > 1900 - this.buffer
                 || this.player.getY() < this.buffer
                 || this.player.getY() > 1000 - this.buffer);
     }

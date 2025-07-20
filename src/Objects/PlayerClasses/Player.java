@@ -11,6 +11,9 @@ public class Player extends VisualObject{
     protected int speed = 1;
     protected int overHealExpireTime = -1;
     protected double rollSpeed = 1;
+    public int maxRolls = 1;
+    public int rolls = maxRolls;
+    public int rollRechargeTick = -1;
     public Player(int x, int y, int maxHealth) {
         super (x, y, "images/rus.jpg");
         this.health = maxHealth;
@@ -40,6 +43,16 @@ public class Player extends VisualObject{
         }
     }
 
+    public void checkRolls(int currentTick){
+        if (this.rollRechargeTick != -1 && currentTick >= this.rollRechargeTick) {
+            this.rolls += this.maxRolls;
+            this.rollRechargeTick = -1; // Reset recharge tick
+            if (this.rolls< this.maxRolls){
+                this.checkRolls(currentTick + (int) (180/this.rollSpeed));
+            }
+        }
+    }
+    
     public int getHealth() {
         return this.health;
     }
@@ -62,8 +75,14 @@ public class Player extends VisualObject{
         this.width = 50; // Set width for collision detection
         this.height = 50; // Set height for collision detection
         this.draw(g);
-        this.keyHandler(pressedKeys);
+        // this.keyHandler(pressedKeys);
         this.checkOverHeal(tickCount);
+    }
+    public void rollCooldown(int cooldown, int currentTick, int cooldownTime) {
+        if (this.rollRechargeTick == -1) {
+            this.rollRechargeTick = currentTick + cooldownTime;
+        }
+        this.rolls -= 1;
     }
     public int getX() {
         return this.x;
@@ -79,5 +98,9 @@ public class Player extends VisualObject{
     }
     public double getSpeed() {
         return this.speed;
+    }
+    public void move(int dx, int dy) {
+        this.x += dx;
+        this.y += dy;
     }
 }

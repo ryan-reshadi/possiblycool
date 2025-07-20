@@ -1,12 +1,15 @@
 package Levels;
 
 import Objects.PlayerClasses.*;
+import Objects.Terrain.Border;
+import Objects.VisualObject;
+
 import java.awt.Color;
 import java.util.ArrayList;
 public class Level1 extends BaseLevel {
     
     public Level1(int bgX, int bgY, Player player) {
-        super(Color.BLACK, new ArrayList<Player>() {{ add(player); }});
+        super(Color.BLACK, new ArrayList<VisualObject>() {{ add(player); }});
         this.width = 800; // Example width
         this.height = 600; // Example height
         this.initLevel(); // Initialize level-specific elements
@@ -14,8 +17,8 @@ public class Level1 extends BaseLevel {
 
     @Override
     protected void initLevel() {
-        this.levelVisualObjects.add(new ArrayList<>()); // Initialize with one empty row
-        
+        this.levelVisualObjects.get(1).add(new Border(300, 600, 200, 100, Color.PINK)); // Add player to the first row
+
     }
     
 }
