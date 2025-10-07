@@ -3,6 +3,8 @@ package Levels;
 import Objects.PlayerClasses.*;
 import Objects.Terrain.Border;
 import Objects.VisualObject;
+import Objects.Buttons.*;
+import Objects.EnemyClasses.*;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -17,8 +19,8 @@ public class Level1 extends BaseLevel {
 
     @Override
     protected void initLevel() {
-        this.levelVisualObjects.get(1).add(new Border(300, 600, 200, 100, Color.PINK)); // Add player to the first row
+        this.addBorder(new Border(300, 600, 200, 100, Color.PINK)); // Add player to the first row
+        
 
-    }
-    
+    }    
 }
