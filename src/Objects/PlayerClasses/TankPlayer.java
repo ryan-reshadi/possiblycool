@@ -8,7 +8,10 @@ public class TankPlayer extends Player {
         this.setImgPath("images/player-tank.jpg");
     }
 
-    
+    @Override
+    public void attack() {
+    	
+    }
 
     
     

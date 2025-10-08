@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
 
+
+
 public class BaseLevel {
 
     protected int width;
@@ -326,5 +328,14 @@ public class BaseLevel {
     //child classes override to initialize their specific visual objects
     protected void initLevel() {
         // Initialize level-specific elements
+    }
+    protected void addBorder(Border b) {
+    	this.levelVisualObjects.get(1).add(b);
+    }
+    protected void addPlayer(Enemy e) {
+    	this.levelVisualObjects.get(2).add(e);
+    }
+    protected void addButton(Button b) {
+    	this.levelVisualObjects.get(3).add(b);
     }
 }
