@@ -77,6 +77,9 @@ public class VisualObject {
         }
     }
 
+    public int secondsToTicks(double seconds) {
+        return (int) (seconds * 60); // Assuming 60 ticks per second
+    }
     public void setVisible() {
         this.visible = true;
     }

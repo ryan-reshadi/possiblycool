@@ -8,10 +8,7 @@ public class RoguePlayer extends Player {
         // this.setImgPath("images/rogue-player.jpg");
     }
 
-    @Override
-    public void attack() {
-
-    }
+    
 
     
     

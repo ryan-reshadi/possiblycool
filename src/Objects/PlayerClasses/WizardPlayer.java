@@ -6,10 +6,12 @@ public class WizardPlayer extends Player {
         super(x, y, 100);
         this.setImgPath("images/player-wizard.jpg");
         this.rollSpeed = 1.0;
+
     }
 
     @Override
-    public void attack() {
+    public void attack(int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
+        
         
     }
     
