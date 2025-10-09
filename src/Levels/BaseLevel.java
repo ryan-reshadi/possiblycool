@@ -257,10 +257,11 @@ public class BaseLevel {
         
     }
 
-    public void mouseHandler(int clickXDown, int clickYDown) {
+    public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
         // Handle mouse click events
         if (this.player != null) {
-            this.player.attack(clickXDown, clickYDown, 0, 0); // Pass dummy values for clickXUp and clickYUp
+            this.player.attack(clickXDown, clickYDown, 0, 0, currentTick); // Pass dummy values for clickXUp and clickYUp
+            System.out.println("ts working!");
         }
     }
 
