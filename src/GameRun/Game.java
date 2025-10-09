@@ -90,6 +90,7 @@ public class Game {
                 System.out.println("State not recognized (switch from): " + this.state);
         }
         this.state = newState;
+        this.toRemove.addAll(this.visualObjects);
         switch (this.state) {
             case INITIALIZED_1:
                 this.toAdd.add(new Objects.Buttons.StartButton(50, 50, 200, 100, this));
