@@ -13,6 +13,8 @@ public class TankPlayer extends Player {
     	
     // }
 
-    
+    public void testWorking() {
+    	System.out.println("Tank player is working!");
+    }
     
 }

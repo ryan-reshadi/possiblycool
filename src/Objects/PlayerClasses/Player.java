@@ -2,7 +2,10 @@ package Objects.PlayerClasses;
 
 import Objects.VisualObject;
 import java.awt.Graphics;
+import java.util.ArrayList;
 import java.util.Set;
+import java.awt.geom.*;
+import Objects.EnemyClasses.Enemy;
 
 public class Player extends VisualObject {
     protected int health = 100;
@@ -20,10 +23,14 @@ public class Player extends VisualObject {
     protected int attackDamageTick = -1;
     protected int attackRange = 100;
     protected int attackAngle = 30;
+    protected Rectangle2D hitbox;
+    
     public Player(int x, int y, int maxHealth) {
         super(x, y, "images/rus.jpg");
         this.maxHealth = maxHealth;
         this.health = maxHealth;
+        this.hitbox = new Rectangle2D.Double();
+        System.out.println("Heh goon, the hitbox is working!");
     }
 
     public void attackAnimationBegin(int currentTick) {
@@ -35,13 +42,16 @@ public class Player extends VisualObject {
         
     }
 
-    public void attack(int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
-        
+    public void attack(int clickXDown, int clickYDown, int clickXUp, int clickYUp, int currentTick) {
+        if (clickXDown>-1 && clickYDown>-1) {
+        	attackAnimationBegin(currentTick);
+        }
     }
 
-    public void checkAttackAnimation(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
+    public void checkAttackAnimation(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
         if (this.attackDamageTick != -1 && currentTick >= this.attackDamageTick && currentTick < this.attackAnimationTick) {
             // Perform attack damage logic here
+        	
             this.attackDamageTick = -1; // Reset attack damage tick
         }
         if (this.attackAnimationTick != -1 && currentTick >= this.attackAnimationTick) {
@@ -66,9 +76,11 @@ public class Player extends VisualObject {
             this.health = this.maxHealth;
         }
     }
-    public void checkAllTick(int currentTick, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
-        this.checkRolls(currentTick);
-        this.checkAttackAnimation(currentTick, clickXDown, clickYDown, clickXUp, clickYUp);
+    public void checkAllTick(int currentTick, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
+        
+    	
+    	this.checkRolls(currentTick);
+        this.checkAttackAnimation(currentTick, clickXDown, clickYDown, clickXUp, clickYUp, others);
         this.checkOverHeal(currentTick);
     }
     public void overHeal(int amount, int currentTick, int duration) {
@@ -116,12 +128,12 @@ public class Player extends VisualObject {
         }
     }
     
-    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, ArrayList<VisualObject> others) {
         this.width = 50; // Set width for collision detection
         this.height = 50; // Set height for collision detection
         this.draw(g);
         // this.keyHandler(pressedKeys);
-        this.checkAllTick(tickCount, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp);
+        this.checkAllTick(tickCount, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, others);
     }
 
     public void rollCooldown(int currentTick, int cooldownTime) {
@@ -129,6 +141,59 @@ public class Player extends VisualObject {
             this.rollRechargeTick = currentTick + cooldownTime;
         }
         this.rolls -= 1;
+    }
+    public boolean hits(Arc2D arc, Rectangle2D rect) {
+        // Step 1: Check for general intersection using Arc2D's built-in method.
+        // This checks for intersections with the curved segment.
+        if (arc.intersects(rect)) {
+            return true;
+        }
+
+        // Step 2: Check if any of the rectangle's four corners are inside the arc.
+        if (arc.contains(rect.getMinX(), rect.getMinY()) ||
+            arc.contains(rect.getMaxX(), rect.getMinY()) ||
+            arc.contains(rect.getMinX(), rect.getMaxY()) ||
+            arc.contains(rect.getMaxX(), rect.getMaxY())) {
+            return true;
+        }
+
+        // Step 3: Check if the arc's endpoints are inside the rectangle.
+        Point2D arcStart = arc.getStartPoint();
+        Point2D arcEnd = arc.getEndPoint();
+        if (rect.contains(arcStart) || rect.contains(arcEnd)) {
+            return true;
+        }
+
+        // Step 4: Handle special arc types with straight segments (CHORD and PIE).
+        // This checks for intersections between the straight segments and the rectangle's edges.
+        if (arc.getArcType() == Arc2D.CHORD || arc.getArcType() == Arc2D.PIE) {
+            Point2D center = new Point2D.Double(arc.getCenterX(), arc.getCenterY());
+            
+            // Define the straight-line segments for the chord or pie.
+            Line2D radial1 = new Line2D.Double(center, arcStart);
+            Line2D radial2 = new Line2D.Double(center, arcEnd);
+
+            // Create line segments for the rectangle's four sides.
+            Line2D rectTop = new Line2D.Double(rect.getMinX(), rect.getMinY(), rect.getMaxX(), rect.getMinY());
+            Line2D rectRight = new Line2D.Double(rect.getMaxX(), rect.getMinY(), rect.getMaxX(), rect.getMaxY());
+            Line2D rectBottom = new Line2D.Double(rect.getMinX(), rect.getMaxY(), rect.getMaxX(), rect.getMaxY());
+            Line2D rectLeft = new Line2D.Double(rect.getMinX(), rect.getMinY(), rect.getMinX(), rect.getMaxY());
+            
+            // Check for intersections between the straight arc segments and the rectangle's edges.
+            if (radial1.intersects(rect) || radial2.intersects(rect)) {
+                return true;
+            }
+            
+            // For a CHORD arc, also check the chord line itself.
+            if (arc.getArcType() == Arc2D.CHORD) {
+                 Line2D chord = new Line2D.Double(arcStart, arcEnd);
+                 if (chord.intersects(rect)) {
+                    return true;
+                 }
+            }
+        }
+        
+        return false;
     }
 
     public int getX() {
@@ -154,5 +219,8 @@ public class Player extends VisualObject {
     public void move(int dx, int dy) {
         this.x += dx;
         this.y += dy;
+    }
+    public void testWorking() {
+    	System.out.println("Player is working!");
     }
 }

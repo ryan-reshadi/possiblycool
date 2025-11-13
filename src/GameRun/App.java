@@ -61,6 +61,8 @@ public class App extends JPanel {
 
     private void tick(Graphics g) {
         this.game.tick(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp);  // Call the game's tick method
+        
+        
         this.clickXDown = -1;
         this.clickYDown = -1;
         this.clickXUp = -1;

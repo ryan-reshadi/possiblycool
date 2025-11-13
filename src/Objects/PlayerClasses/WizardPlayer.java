@@ -10,7 +10,7 @@ public class WizardPlayer extends Player {
     }
 
     @Override
-    public void attack(int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
+    public void attack(int clickXDown, int clickYDown, int clickXUp, int clickYUp, int currentTick) {
         
         
     }

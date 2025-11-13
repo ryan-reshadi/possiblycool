@@ -27,7 +27,8 @@ public class Game {
     }
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
-        this.tickCount++;
+    	
+    	this.tickCount++;
         for (int i = this.visualObjects.size() - 1; i >= 0; i--) {
             this.visualObjects.get(i).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
             // System.out.println("Ticking object: " + this.visualObjects.get(i).getClass().getSimpleName());
@@ -39,6 +40,7 @@ public class Game {
         visualObjects.addAll(this.toAdd);
         this.toAdd.clear();
         if (this.currentLevel != null) {
+        	
             this.currentLevel.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
         }
     }
@@ -90,6 +92,7 @@ public class Game {
                 System.out.println("State not recognized (switch from): " + this.state);
         }
         this.state = newState;
+        this.toRemove.addAll(this.visualObjects);
         switch (this.state) {
             case INITIALIZED_1:
                 this.toAdd.add(new Objects.Buttons.StartButton(50, 50, 200, 100, this));
