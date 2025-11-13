@@ -30,6 +30,7 @@ public class Player extends VisualObject {
         this.maxHealth = maxHealth;
         this.health = maxHealth;
         this.hitbox = new Rectangle2D.Double();
+        System.out.println("Heh goon, the hitbox is working!");
     }
 
     public void attackAnimationBegin(int currentTick) {
@@ -47,7 +48,7 @@ public class Player extends VisualObject {
         }
     }
 
-    public void checkAttackAnimation(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<Enemy> others) {
+    public void checkAttackAnimation(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
         if (this.attackDamageTick != -1 && currentTick >= this.attackDamageTick && currentTick < this.attackAnimationTick) {
             // Perform attack damage logic here
         	
@@ -75,8 +76,10 @@ public class Player extends VisualObject {
             this.health = this.maxHealth;
         }
     }
-    public void checkAllTick(int currentTick, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<Enemy> others) {
-        this.checkRolls(currentTick);
+    public void checkAllTick(int currentTick, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
+        
+    	
+    	this.checkRolls(currentTick);
         this.checkAttackAnimation(currentTick, clickXDown, clickYDown, clickXUp, clickYUp, others);
         this.checkOverHeal(currentTick);
     }
@@ -125,7 +128,7 @@ public class Player extends VisualObject {
         }
     }
     
-    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, ArrayList<Enemy> others) {
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, ArrayList<VisualObject> others) {
         this.width = 50; // Set width for collision detection
         this.height = 50; // Set height for collision detection
         this.draw(g);
@@ -216,5 +219,8 @@ public class Player extends VisualObject {
     public void move(int dx, int dy) {
         this.x += dx;
         this.y += dy;
+    }
+    public void testWorking() {
+    	System.out.println("Player is working!");
     }
 }

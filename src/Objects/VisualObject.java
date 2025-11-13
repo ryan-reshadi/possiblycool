@@ -155,4 +155,7 @@ public class VisualObject {
     public int getHeight() {
         return this.height;
     }
+    public void testWorking() {
+    	System.out.println("This object is working!");
+    }
 }

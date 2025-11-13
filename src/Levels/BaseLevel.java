@@ -32,7 +32,9 @@ public class BaseLevel {
     protected int offsetX = 0;
     protected int offsetY = 0;
     protected Color backgroundColor = null;
-
+    
+    
+    
     // Queues for deferred add/remove
     protected List<VisualObject> addList = new LinkedList<>();
     protected List<VisualObject> removeList = new LinkedList<>();
@@ -96,13 +98,20 @@ public class BaseLevel {
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
         // Draw level elements
+    	
         this.drawBG(g);
         this.updateOffset();
         this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
         for (ArrayList<VisualObject> row : this.levelVisualObjects) {
             for (VisualObject obj : row) {
                 if (obj != null) {
-                    obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+                	if (obj instanceof Player) {
+                		((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
+                	}
+                	else {
+                		obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+                	}
+//                    obj.testWorking();
                 }
             }
         }
@@ -333,7 +342,7 @@ public class BaseLevel {
     protected void addBorder(Border b) {
     	this.levelVisualObjects.get(1).add(b);
     }
-    protected void addPlayer(Enemy e) {
+    protected void addEnemy(Enemy e) {
     	this.levelVisualObjects.get(2).add(e);
     }
     protected void addButton(Button b) {
