@@ -1,9 +1,9 @@
 package Objects.EnemyClasses;
 
 import Objects.PlayerClasses.Player;
-import Objects.VisualObject;
+import Objects.Entity;
 
-public class Enemy extends VisualObject {
+public class Enemy extends Entity {
 
     protected int health;
     protected int damage;

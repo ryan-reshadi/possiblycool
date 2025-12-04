@@ -102,6 +102,7 @@ public class BaseLevel {
         this.drawBG(g);
         this.updateOffset();
         this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
+        this.mouseHandler(clickXDown, clickYDown, tickCount);
         for (ArrayList<VisualObject> row : this.levelVisualObjects) {
             for (VisualObject obj : row) {
                 if (obj != null) {
@@ -267,10 +268,10 @@ public class BaseLevel {
     }
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
-        // Handle mouse click events
+        if (clickXDown ==-1 || clickYDown ==-1) {return;}
         if (this.player != null) {
-            this.player.attack(clickXDown, clickYDown, 0, 0, currentTick); // Pass dummy values for clickXUp and clickYUp
-            System.out.println("ts working!");
+            this.player.attack(clickXDown, clickYDown, currentTick); // Pass dummy values for clickXUp and clickYUp
+            System.out.println("hey");
         }
     }
 
