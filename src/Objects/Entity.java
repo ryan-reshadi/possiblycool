@@ -19,6 +19,7 @@ public abstract class Entity extends VisualObject {
     protected int attackRange = 100;
     protected int attackAngle = 30;
     protected Rectangle2D hitbox;
+    protected Arc2D attackBox;
 	public Entity (int x, int y, int width, int height, String imgPath) {
 		super (x, y, width, height, imgPath);
 		
@@ -58,9 +59,13 @@ public abstract class Entity extends VisualObject {
     public void resetAnimation(){
         this.attackAnimationTick = -1;
         this.attackDamageTick = -1;
+        this.attackBox = null;
     }
     public boolean isInAnimation() {
         return this.attackAnimationTick != -1 || this.attackDamageTick != -1;
+    }
+    public boolean isSwinging() {
+    	return this.attackAnimationTick>attackDamageDelay;
     }
 
     public void hurt(int damage) {

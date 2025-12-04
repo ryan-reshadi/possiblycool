@@ -1,11 +1,15 @@
 package Objects.PlayerClasses;
 
 import Objects.VisualObject;
+
+import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.Set;
 import java.awt.geom.*;
 import Objects.Entity;
+import java.awt.geom.Arc2D;
 
 public class Player extends Entity {
 //    protected int health = 100;
@@ -60,6 +64,20 @@ public class Player extends Entity {
             }
         }
     }
+    public void checkAttackEffects(Graphics g) {
+    	Graphics2D g2d = (Graphics2D) g;
+
+        // Assuming 'attackArc' is your Arc2D.Double object created earlier:
+        // Arc2D.Double attackArc = ...
+    	if(attackBox!=null) {
+    		g2d.setColor(Color.RED);
+    		g2d.fill(attackBox); 
+    		// Draw the actual shape object    		
+    	}
+    	if (this.isInAnimation()&& !this.isSwinging()) {
+    		System.out.println("yey");
+    	}
+    }
 
     public int getHealth() {
         return this.health;
@@ -90,15 +108,34 @@ public class Player extends Entity {
     
     public void attack(int clickXDown, int clickYDown,int currentTick) {
     	this.attackAnimationBegin(currentTick);
-    	
+    	double deltaX =-1*(this.x+this.width/2 - clickXDown);
+        double deltaY =-1 *(this.y+this.height/2 - clickYDown);
+
+        // Use Math.atan2(y, x) to get the angle in radians
+        // The y-coordinate difference goes first!
+        double angleRadians = Math.atan2(deltaY, deltaX);
+
+        // Convert the angle from radians to degrees
+        double angleDegrees = Math.toDegrees(angleRadians);
+
+    	this.attackBox = new Arc2D.Double(
+    		    this.x+this.width/2 - attackRange, // x-coordinate of the top-left corner of the framing rectangle
+    		    this.y+this.height/2 - attackRange, // y-coordinate of the top-left corner of the framing rectangle
+    		    attackRange * 2,       // width of the framing rectangle (diameter)
+    		    attackRange * 2,       // height of the framing rectangle (diameter)
+    		    -1*(angleDegrees+(attackAngle/2)),            // starting angle in degrees
+    		    attackAngle,           // angular extent (length) in degrees
+    		    Arc2D.PIE              // closure type (PIE, CHORD, or OPEN)
+    		);;
     }
     
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, ArrayList<VisualObject> others) {
+    	this.draw(g);
         this.width = 50; // Set width for collision detection
         this.height = 50; // Set height for collision detection
-        this.draw(g);
         // this.keyHandler(pressedKeys);
         this.checkAllTick(tickCount, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, others);
+        this.checkAttackEffects(g);
     }
 
     public void rollCooldown(int currentTick, int cooldownTime) {
