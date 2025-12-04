@@ -5,7 +5,6 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.Set;
 import java.awt.geom.*;
-import Objects.EnemyClasses.Enemy;
 
 public class Player extends VisualObject {
     protected int health = 100;
