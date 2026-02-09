@@ -5,6 +5,7 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import Objects.PlayerClasses.Player;
 
 import Objects.VisualObject;
 
@@ -16,6 +17,37 @@ public abstract class MeleeWeapon {
     protected int attackRange = 100;
     protected int attackAngle = 30;
     protected Arc2D attackBox;
+    
+    public void tick(int currentTick, int clickXDown, int clickYDown, ArrayList<VisualObject> targets, Player owner) {
+    	if (clickXDown>-1 || clickYDown>-1) {
+    		this.attack(clickXDown, clickYDown, currentTick, owner.getX()+owner.getWidth()/2, owner.getY()+owner.getHeight());
+    	}
+    }
+    
+    public void attack(int clickXDown, int clickYDown,int currentTick, int processedX, int processedY) {
+    	this.attackAnimationBegin(currentTick);
+//    	double deltaX =-1*(this.x+this.width/2 - clickXDown);
+//        double deltaY =-1 *(this.y+this.height/2 - clickYDown);
+    	double deltaX =-1*(processedX - clickXDown);
+        double deltaY =-1 *(processedY - clickYDown);
+
+        // Use Math.atan2(y, x) to get the angle in radians
+        // The y-coordinate difference goes first!
+        double angleRadians = Math.atan2(deltaY, deltaX);
+
+        // Convert the angle from radians to degrees
+        double angleDegrees = Math.toDegrees(angleRadians);
+
+    	this.attackBox = new Arc2D.Double(
+    		    processedX - attackRange, // x-coordinate of the top-left corner of the framing rectangle
+    		    processedY - attackRange, // y-coordinate of the top-left corner of the framing rectangle
+    		    attackRange * 2,       // width of the framing rectangle (diameter)
+    		    attackRange * 2,       // height of the framing rectangle (diameter)
+    		    -1*(angleDegrees+(attackAngle/2)),            // starting angle in degrees
+    		    attackAngle,           // angular extent (length) in degrees
+    		    Arc2D.PIE              // closure type (PIE, CHORD, or OPEN)
+    		);;
+    }
     
     protected void attackAnimationBegin(int currentTick) {
         if (this.attackAnimationTick == -1) {

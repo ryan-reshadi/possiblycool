@@ -131,28 +131,11 @@ public abstract class Entity extends VisualObject {
         
         return false;
     }
-    public int getX() {
-        return this.x;
-    }
-
-    public int getY() {
-        return this.y;
-    }
-
-    public void setX(int x) {
-        this.x = x;
-    }
-
-    public void setY(int y) {
-        this.y = y;
-    }
-
+    
+    
     public double getSpeed() {
         return this.speed;
     }
 
-    public void move(int dx, int dy) {
-        this.x += dx;
-        this.y += dy;
-    }
+    
 }
