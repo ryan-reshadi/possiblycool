@@ -64,13 +64,16 @@ public class Player extends Entity {
             }
         }
     }
-    public void checkAttackEffects(Graphics g) {
+    public void checkAttackEffects(Graphics g, int currentTick) {
     	Graphics2D g2d = (Graphics2D) g;
 
-        // Assuming 'attackArc' is your Arc2D.Double object created earlier:
-        // Arc2D.Double attackArc = ...
     	if(attackBox!=null) {
-    		g2d.setColor(Color.RED);
+    		if (currentTick<this.attackDamageTick-this.attackDamageDelay) {
+    			g2d.setColor(Color.white);
+    		}
+    		else {
+    			g2d.setColor(Color.RED);    			
+    		}
     		g2d.fill(attackBox); 
     		// Draw the actual shape object    		
     	}
@@ -135,7 +138,7 @@ public class Player extends Entity {
         this.height = 50; // Set height for collision detection
         // this.keyHandler(pressedKeys);
         this.checkAllTick(tickCount, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, others);
-        this.checkAttackEffects(g);
+        this.checkAttackEffects(g,tickCount);
     }
 
     public void rollCooldown(int currentTick, int cooldownTime) {
