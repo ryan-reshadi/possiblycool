@@ -10,6 +10,7 @@ import java.util.Set;
 import java.awt.geom.*;
 import Objects.Entity;
 import java.awt.geom.Arc2D;
+import Objects.PlayerEquipment.Item;
 
 public class Player extends Entity {
 //    protected int health = 100;
@@ -21,6 +22,8 @@ public class Player extends Entity {
     public int maxRolls = 1;
     public int rolls = maxRolls;
     public int rollRechargeTick = -1;
+    public Item[] inventory = new Item[27];
+    public int MainHandIndex;
 //    protected int attackAnimationLength = this.secondsToTicks(0.6);
 //    protected int attackDamageDelay = this.secondsToTicks(0.2);
 //    protected int attackAnimationTick = -1;

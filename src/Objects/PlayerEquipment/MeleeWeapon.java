@@ -9,7 +9,7 @@ import Objects.PlayerClasses.Player;
 
 import Objects.VisualObject;
 
-public abstract class MeleeWeapon {
+public abstract class MeleeWeapon extends Item {
 	protected int attackAnimationLength = this.secondsToTicks(0.6);
     protected int attackDamageDelay = this.secondsToTicks(0.2);
     protected int attackAnimationTick = -1;
