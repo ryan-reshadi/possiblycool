@@ -80,7 +80,7 @@ public class Player extends Entity {
     		g2d.fill(attackBox); 
     		// Draw the actual shape object    		
     	}
-    	if (this.isInAnimation()&& !this.isSwinging()) {
+    	if (this.isInAnimation() && !this.isSwinging()) {
     		System.out.println("yey");
     	}
     }

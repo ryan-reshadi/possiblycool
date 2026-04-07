@@ -9,4 +9,8 @@ public class Item {
 	public Item() {
 		
 	}
+	
+	public void leftClickAct(int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
+		
+	}
 }
