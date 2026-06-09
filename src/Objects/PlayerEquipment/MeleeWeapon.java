@@ -1,13 +1,11 @@
 package Objects.PlayerEquipment;
-import java.awt.Color;
+import Objects.PlayerClasses.Player;
+import Objects.VisualObject;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
-import Objects.PlayerClasses.Player;
-
-import Objects.VisualObject;
 
 public abstract class MeleeWeapon extends Item {
 	protected int attackAnimationLength = this.secondsToTicks(0.6);
@@ -46,7 +44,7 @@ public abstract class MeleeWeapon extends Item {
     		    -1*(angleDegrees+(attackAngle/2)),            // starting angle in degrees
     		    attackAngle,           // angular extent (length) in degrees
     		    Arc2D.PIE              // closure type (PIE, CHORD, or OPEN)
-    		);;
+    		);
     }
     
     protected void attackAnimationBegin(int currentTick) {

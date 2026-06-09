@@ -1,36 +1,22 @@
 package Objects.PlayerClasses;
 
+import Objects.Entity;
 import Objects.VisualObject;
-
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.Set;
-import java.awt.geom.*;
-import Objects.Entity;
-import java.awt.geom.Arc2D;
-import Objects.PlayerEquipment.Item;
 
 public class Player extends Entity {
-//    protected int health = 100;
-//    protected int maxHealth = 100;
-//	protected int speed = 1;
     protected int overHealAmount = 0;
     protected int overHealExpireTime = -1;
     protected double rollSpeed = 1;
     public int maxRolls = 1;
     public int rolls = maxRolls;
     public int rollRechargeTick = -1;
-    public Item[] inventory = new Item[27];
-    public int MainHandIndex;
-//    protected int attackAnimationLength = this.secondsToTicks(0.6);
-//    protected int attackDamageDelay = this.secondsToTicks(0.2);
-//    protected int attackAnimationTick = -1;
-//    protected int attackDamageTick = -1;
-//    protected int attackRange = 100;
-//    protected int attackAngle = 30;
-//    protected Rectangle2D hitbox;
+    
     
     public Player(int x, int y, int maxHealth) {
         super(x, y, "images/rus.jpg");
@@ -43,7 +29,7 @@ public class Player extends Entity {
     
     public void checkAllTick(int currentTick, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
     	this.checkRolls(currentTick);
-        this.checkAttackAnimation(currentTick, clickXDown, clickYDown, clickXUp, clickYUp, others);
+        this.updateAttackAnimation();
         this.checkOverHeal(currentTick);
     }
     public void overHeal(int amount, int currentTick, int duration) {
@@ -70,18 +56,15 @@ public class Player extends Entity {
     public void checkAttackEffects(Graphics g, int currentTick) {
     	Graphics2D g2d = (Graphics2D) g;
 
-    	if(attackBox!=null) {
-    		if (currentTick<this.attackDamageTick-this.attackDamageDelay) {
-    			g2d.setColor(Color.white);
+    	if(attackBox!=null && this.isInAnimation()) {
+    		// Highlight the attack box during animation
+    		if (this.attackDamageApplied) {
+    			g2d.setColor(Color.RED);    	
     		}
     		else {
-    			g2d.setColor(Color.RED);    			
+    			g2d.setColor(Color.white);
     		}
     		g2d.fill(attackBox); 
-    		// Draw the actual shape object    		
-    	}
-    	if (this.isInAnimation() && !this.isSwinging()) {
-    		System.out.println("yey");
     	}
     }
 
@@ -113,7 +96,7 @@ public class Player extends Entity {
     }
     
     public void attack(int clickXDown, int clickYDown,int currentTick) {
-    	this.attackAnimationBegin(currentTick);
+    	this.startAttackAnimation();
     	double deltaX =-1*(this.x+this.width/2 - clickXDown);
         double deltaY =-1 *(this.y+this.height/2 - clickYDown);
 
