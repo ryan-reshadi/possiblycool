@@ -65,7 +65,7 @@ public class Animation {
                 if (currentTick >= segment.getStartTick() && currentTick < segment.getStartTick() + segment.getTicks()) {
                     segment.tickAction();
                 }
-                if (currentTick == segment.getStartTick() + segment.getTicks()) {
+                if (currentTick == segment.getStartTick() + segment.getTicks()-1) {
                     segment.endAction();
                 }
             }
