@@ -270,8 +270,7 @@ public class BaseLevel {
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
         if (clickXDown ==-1 || clickYDown ==-1) {return;}
         if (this.player != null) {
-            this.player.attack(clickXDown, clickYDown, currentTick); // Pass dummy values for clickXUp and clickYUp
-            System.out.println("hey");
+            this.player.attack(clickXDown, clickYDown, currentTick);
         }
     }
 
