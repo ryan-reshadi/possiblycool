@@ -67,9 +67,6 @@ public class App extends JPanel {
         this.clickYDown = -1;
         this.clickXUp = -1;
         this.clickYUp = -1;
-        // You can add game logic here that needs to run every tick
-        // For example, you could update positions of game objects, check for collisions, etc.
-        // System.out.println("Tick: " + tickCount);
     }
 
     @Override
