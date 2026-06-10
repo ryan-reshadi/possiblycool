@@ -1,4 +1,6 @@
 package Objects.PlayerEquipment;
+import Objects.Animations.Animation;
+import Objects.Animations.AnimationSegment;
 import Objects.PlayerClasses.Player;
 import Objects.VisualObject;
 import java.awt.geom.Arc2D;
@@ -8,14 +10,19 @@ import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
 public abstract class MeleeWeapon extends Item {
+	protected Animation attackAnimation;
 	protected int attackAnimationLength = this.secondsToTicks(0.6);
     protected int attackDamageDelay = this.secondsToTicks(0.2);
-    protected int attackAnimationTick = -1;
-    protected int attackDamageTick = -1;
     protected int attackRange = 100;
     protected int attackAngle = 30;
     protected Arc2D attackBox;
+    protected boolean attackDamageApplied = false;
     
+    public MeleeWeapon(int attackRange, int attackAngle) {
+        this.attackRange = attackRange;
+        this.attackAngle = attackAngle;
+    }
+
     public void tick(int currentTick, int clickXDown, int clickYDown, ArrayList<VisualObject> targets, Player owner) {
     	if (clickXDown>-1 || clickYDown>-1) {
     		this.attack(clickXDown, clickYDown, currentTick, owner.getX()+owner.getWidth()/2, owner.getY()+owner.getHeight());
@@ -23,9 +30,7 @@ public abstract class MeleeWeapon extends Item {
     }
     
     public void attack(int clickXDown, int clickYDown,int currentTick, int processedX, int processedY) {
-    	this.attackAnimationBegin(currentTick);
-//    	double deltaX =-1*(this.x+this.width/2 - clickXDown);
-//        double deltaY =-1 *(this.y+this.height/2 - clickYDown);
+    	this.startAttackAnimation();
     	double deltaX =-1*(processedX - clickXDown);
         double deltaY =-1 *(processedY - clickYDown);
 
@@ -47,35 +52,82 @@ public abstract class MeleeWeapon extends Item {
     		);
     }
     
-    protected void attackAnimationBegin(int currentTick) {
-        if (this.attackAnimationTick == -1) {
-            this.attackAnimationTick = currentTick + this.attackAnimationLength;
-            this.attackDamageTick = this.attackAnimationTick + this.attackDamageDelay;
-            // Start attack animation
+    /**
+     * Starts a new attack animation with swing and damage phases
+     */
+    public void startAttackAnimation() {
+        // Don't start if already animating
+        if (attackAnimation != null && attackAnimation.isPlaying()) {
+            return;
         }
-        
+
+        attackDamageApplied = false;
+        attackAnimation = new Animation();
+
+        // Swing segment: visual animation phase (full animation duration)
+        AnimationSegment swingSegment = new AnimationSegment(
+                0,
+                attackAnimationLength,
+                () -> { /* Animation swing start */ },
+                () -> { /* Swing tick - update visual state */ },
+                null
+        );
+
+        // Damage segment: when damage is applied (single tick at damage delay point)
+        AnimationSegment damageSegment = new AnimationSegment(
+                attackDamageDelay,
+                1,
+                () -> applyAttackDamage(), // Fire damage on segment start
+                null,
+                null
+        );
+
+        attackAnimation.addSegment(swingSegment);
+        attackAnimation.addSegment(damageSegment);
+        attackAnimation.addEndAction(() -> onAttackAnimationEnd());
+
+        attackAnimation.play();
     }
 
-    public void checkAttackAnimation(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
-        if (this.attackDamageTick != -1 && currentTick >= this.attackDamageTick && currentTick < this.attackAnimationTick) {
-            // Perform attack damage logic here
-        	
-            this.attackDamageTick = -1; // Reset attack damage tick
-        }
-        if (this.attackAnimationTick != -1 && currentTick >= this.attackAnimationTick) {
-            this.resetAnimation();
+    /**
+     * Apply damage from the attack (can be overridden by subclasses)
+     * Override this method to implement specific damage logic
+     */
+    protected void applyAttackDamage() {
+        if (!attackDamageApplied) {
+            attackDamageApplied = true;
+            // Damage logic to be implemented by subclasses
         }
     }
+
+    /**
+     * Called when attack animation completes
+     */
+    protected void onAttackAnimationEnd() {
+        attackBox = null;
+        resetAnimation();
+    }
+
+    /**
+     * Updates the current attack animation (call this each frame)
+     */
+    public void updateAttackAnimation() {
+        if (attackAnimation != null && attackAnimation.isPlaying()) {
+            attackAnimation.tick();
+        }
+    }
+
     public void resetAnimation(){
-        this.attackAnimationTick = -1;
-        this.attackDamageTick = -1;
         this.attackBox = null;
+        this.attackDamageApplied = false;
     }
+    
     public boolean isInAnimation() {
-        return this.attackAnimationTick != -1 || this.attackDamageTick != -1;
+        return attackAnimation != null && attackAnimation.isPlaying();
     }
+    
     public boolean isSwinging() {
-    	return this.attackAnimationTick>attackDamageDelay;
+        return isInAnimation();
     }
 
     public boolean touchingOtherHitBox(Arc2D arc, Rectangle2D rect) {
@@ -131,7 +183,22 @@ public abstract class MeleeWeapon extends Item {
         
         return false;
     }
+    
     public int secondsToTicks(double seconds) {
         return (int) (seconds * 60); // Assuming 60 ticks per second
+    }
+    
+    /**
+     * Get the current attack box (null if not attacking)
+     */
+    public Arc2D getAttackBox() {
+        return attackBox;
+    }
+    
+    /**
+     * Check if damage has been applied in current attack
+     */
+    public boolean isAttackDamageApplied() {
+        return attackDamageApplied;
     }
 }

@@ -1,6 +1,7 @@
 package Objects.PlayerClasses;
 
 import Objects.Entity;
+import Objects.PlayerEquipment.MeleeWeapon;
 import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -17,7 +18,6 @@ public class Player extends Entity {
     public int rolls = maxRolls;
     public int rollRechargeTick = -1;
     
-    
     public Player(int x, int y, int maxHealth) {
         super(x, y, "images/rus.jpg");
         this.maxHealth = maxHealth;
@@ -26,12 +26,30 @@ public class Player extends Entity {
         System.out.println("Heh goon, the hitbox is working!");
     }
 
+    /**
+     * Get the currently equipped melee weapon (if any)
+     */
+    private MeleeWeapon getEquippedWeapon() {
+        // System.out.println(inventory[MainHandIndex]);
+        if (MainHandIndex >= 0 && MainHandIndex < inventory.length && inventory[MainHandIndex] instanceof MeleeWeapon) {
+            
+            return (MeleeWeapon) inventory[MainHandIndex];
+        }
+        return null;
+    }
     
     public void checkAllTick(int currentTick, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> others) {
     	this.checkRolls(currentTick);
-        this.updateAttackAnimation();
+        
+        // Update weapon animation if equipped
+        MeleeWeapon weapon = getEquippedWeapon();
+        if (weapon != null) {
+            weapon.updateAttackAnimation();
+        }
+        
         this.checkOverHeal(currentTick);
     }
+    
     public void overHeal(int amount, int currentTick, int duration) {
         this.overHealAmount += amount;
         this.overHealExpireTime = currentTick + duration;
@@ -53,19 +71,20 @@ public class Player extends Entity {
             }
         }
     }
+    
     public void checkAttackEffects(Graphics g, int currentTick) {
-    	Graphics2D g2d = (Graphics2D) g;
-
-    	if(attackBox!=null && this.isInAnimation()) {
-    		// Highlight the attack box during animation
-    		if (this.attackDamageApplied) {
-    			g2d.setColor(Color.RED);    	
-    		}
-    		else {
-    			g2d.setColor(Color.white);
-    		}
-    		g2d.fill(attackBox); 
-    	}
+        Graphics2D g2d = (Graphics2D) g;
+        
+        MeleeWeapon weapon = getEquippedWeapon();
+        if (weapon != null && weapon.getAttackBox() != null && weapon.isInAnimation()) {
+            // Highlight the attack box during animation
+            if (weapon.isAttackDamageApplied()) {
+                g2d.setColor(Color.RED);    	
+            } else {
+                g2d.setColor(Color.white);
+            }
+            g2d.fill(weapon.getAttackBox()); 
+        }
     }
 
     public int getHealth() {
@@ -96,35 +115,20 @@ public class Player extends Entity {
     }
     
     public void attack(int clickXDown, int clickYDown,int currentTick) {
-    	this.startAttackAnimation();
-    	double deltaX =-1*(this.x+this.width/2 - clickXDown);
-        double deltaY =-1 *(this.y+this.height/2 - clickYDown);
-
-        // Use Math.atan2(y, x) to get the angle in radians
-        // The y-coordinate difference goes first!
-        double angleRadians = Math.atan2(deltaY, deltaX);
-
-        // Convert the angle from radians to degrees
-        double angleDegrees = Math.toDegrees(angleRadians);
-
-    	this.attackBox = new Arc2D.Double(
-    		    this.x+this.width/2 - attackRange, // x-coordinate of the top-left corner of the framing rectangle
-    		    this.y+this.height/2 - attackRange, // y-coordinate of the top-left corner of the framing rectangle
-    		    attackRange * 2,       // width of the framing rectangle (diameter)
-    		    attackRange * 2,       // height of the framing rectangle (diameter)
-    		    -1*(angleDegrees+(attackAngle/2)),            // starting angle in degrees
-    		    attackAngle,           // angular extent (length) in degrees
-    		    Arc2D.PIE              // closure type (PIE, CHORD, or OPEN)
-    		);;
+        MeleeWeapon weapon = getEquippedWeapon();
+        if (weapon != null) {
+            System.out.println("hi");
+            weapon.attack(clickXDown, clickYDown, currentTick, this.x + this.width/2, this.y + this.height/2);
+        }
     }
     
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, ArrayList<VisualObject> others) {
-    	this.draw(g);
         this.width = 50; // Set width for collision detection
         this.height = 50; // Set height for collision detection
         // this.keyHandler(pressedKeys);
         this.checkAllTick(tickCount, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, others);
-        this.checkAttackEffects(g,tickCount);
+        this.checkAttackEffects(g, tickCount);
+    	this.draw(g);
     }
 
     public void rollCooldown(int currentTick, int cooldownTime) {
@@ -132,10 +136,5 @@ public class Player extends Entity {
             this.rollRechargeTick = currentTick + cooldownTime;
         }
         this.rolls -= 1;
-    }
-
-    
-    public void testWorking() {
-    	System.out.println("Player is working!");
     }
 }

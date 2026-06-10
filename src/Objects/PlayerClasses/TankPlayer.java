@@ -1,6 +1,6 @@
 package Objects.PlayerClasses;
 
-import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.TankSword;
 
 public class TankPlayer extends Player {
 
@@ -8,10 +8,12 @@ public class TankPlayer extends Player {
         super(x, y, 150);
         this.rollSpeed = 0.5;
         this.setImgPath("images/player-tank.jpg");
+        this.giveWeapon();
     }
 
     public void giveWeapon(){
-        this.inventory[0] = new Item();
+        this.inventory[0] = new TankSword();
+        this.MainHandIndex = 0;
     }
 
     public void testWorking() {
