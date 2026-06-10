@@ -4,6 +4,7 @@ import Objects.*;
 import Objects.Buttons.*;
 import Objects.EnemyClasses.*;
 import Objects.PlayerClasses.Player;
+import Objects.PlayerEquipment.MeleeWeapon;
 import Objects.Terrain.*;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -63,6 +64,25 @@ public class BaseLevel {
         this.levelVisualObjects.add(new ArrayList<>()); // Row for Enemy objects
         this.levelVisualObjects.add(new ArrayList<>()); // Row for Button objects
         this.player = (Player) players.get(0); // Set the main player
+    }
+
+    /**
+     * Get the currently equipped melee weapon (if any)
+     */
+    private MeleeWeapon getEquippedWeapon() {
+        if (this.player.getMainHandIndex() >= 0 && this.player.getMainHandIndex() < this.player.getInventory().length 
+                && this.player.getInventory()[this.player.getMainHandIndex()] instanceof MeleeWeapon) {
+            return (MeleeWeapon) this.player.getInventory()[this.player.getMainHandIndex()];
+        }
+        return null;
+    }
+
+    /**
+     * Check if player's weapon is currently animating
+     */
+    private boolean isPlayerWeaponAnimating() {
+        MeleeWeapon weapon = getEquippedWeapon();
+        return weapon != null && weapon.isInAnimation();
     }
 
     // Use this to queue an object for addition
@@ -168,7 +188,7 @@ public class BaseLevel {
 
     public void keyHandler(Set<Integer> pressedKeys, int clickXDown, int clickYDown, int tickCount) {
         
-            // Handle mouse click events
+            // Handle movement
 
             int nextX = player.getX();
             int nextY = player.getY();
@@ -191,9 +211,8 @@ public class BaseLevel {
                     moveY += 50 * speed;
                 }
                 player.rollCooldown(tickCount, 180); // Start roll cooldown
-                player.resetAnimation();
             }
-            if (!this.player.isInAnimation()) {
+            if (!this.isPlayerWeaponAnimating()) {
                 if (pressedKeys.contains(65)) { // A
                     moveX -= speed;
                 }
@@ -262,14 +281,13 @@ public class BaseLevel {
 
             player.setX(finalX);
             player.setY(finalY);
-            // else: do not move player
-        
         
     }
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
         if (clickXDown ==-1 || clickYDown ==-1) {return;}
         if (this.player != null) {
+            
             this.player.attack(clickXDown, clickYDown, currentTick);
         }
     }

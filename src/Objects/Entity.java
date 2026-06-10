@@ -1,7 +1,5 @@
 package Objects;
 
-import Objects.Animations.Animation;
-import Objects.Animations.AnimationSegment;
 import Objects.PlayerEquipment.Item;
 import java.awt.Color;
 import java.awt.geom.Arc2D;
@@ -14,19 +12,12 @@ public abstract class Entity extends VisualObject {
     protected int health;
     protected int maxHealth;
     protected int speed = 1;
-//    protected int overHealAmount = 0;
 
     protected int attackRange = 100;
     protected int attackAngle = 30;
     protected Rectangle2D hitbox;
-    protected Arc2D attackBox;
     protected Item[] inventory = new Item[9];
     protected int MainHandIndex;
-
-    protected Animation attackAnimation;
-    protected int attackAnimationLength = 10; // Duration of attack animation in ticks
-    protected int attackDamageDelay = 5;     // When during animation to apply damage
-    protected boolean attackDamageApplied = false; // Track if damage was already applied
 
     public Entity(int x, int y, int width, int height, String imgPath) {
         super(x, y, width, height, imgPath);
@@ -59,86 +50,6 @@ public abstract class Entity extends VisualObject {
         this.speed = speedChange;
         this.attackRange = attackRangeChange;
         this.attackAngle = attackAngleChange;
-    }
-
-    /**
-     * Starts a new attack animation with swing and damage phases
-     */
-    public void startAttackAnimation() {
-        // Don't start if already animating
-        if (attackAnimation != null && attackAnimation.isPlaying()) {
-            return;
-        }
-
-        attackDamageApplied = false;
-        attackAnimation = new Animation();
-
-        // Swing segment: visual animation phase (full animation duration)
-        AnimationSegment swingSegment = new AnimationSegment(
-                0,
-                attackAnimationLength,
-                () -> {
-                    /* Animation swing start */ },
-                () -> {
-                    /* Swing tick - update visual state */ },
-                null
-        );
-
-        // Damage segment: when damage is applied (single tick at damage delay point)
-        AnimationSegment damageSegment = new AnimationSegment(
-                attackDamageDelay,
-                1,
-                () -> applyAttackDamage(), // Fire damage on segment start
-                null,
-                null
-        );
-
-        attackAnimation.addSegment(swingSegment);
-        attackAnimation.addSegment(damageSegment);
-        attackAnimation.addEndAction(() -> onAttackAnimationEnd());
-
-        attackAnimation.play();
-    }
-
-    /**
-     * Apply damage from the attack (can be overridden by subclasses) Override
-     * this method to implement specific damage logic
-     */
-    protected void applyAttackDamage() {
-        if (!attackDamageApplied) {
-            attackDamageApplied = true;
-            // Damage logic to be implemented by subclasses
-        }
-    }
-
-    /**
-     * Called when attack animation completes
-     */
-    protected void onAttackAnimationEnd() {
-        attackBox = null;
-        resetAnimation();
-    }
-
-    /**
-     * Updates the current attack animation (call this each frame)
-     */
-    public void updateAttackAnimation() {
-        if (attackAnimation != null && attackAnimation.isPlaying()) {
-            attackAnimation.tick();
-        }
-    }
-
-    public void resetAnimation() {
-        attackBox = null;
-        attackDamageApplied = false;
-    }
-
-    public boolean isInAnimation() {
-        return attackAnimation != null && attackAnimation.isPlaying();
-    }
-
-    public boolean isSwinging() {
-        return isInAnimation();
     }
 
     public void hurt(int damage) {
@@ -208,6 +119,68 @@ public abstract class Entity extends VisualObject {
 
     public double getSpeed() {
         return this.speed;
+    }
+
+    // Getters
+    public int getHealth() {
+        return this.health;
+    }
+
+    public int getMaxHealth() {
+        return this.maxHealth;
+    }
+
+    public int getAttackRange() {
+        return this.attackRange;
+    }
+
+    public int getAttackAngle() {
+        return this.attackAngle;
+    }
+
+    public Rectangle2D getHitbox() {
+        return this.hitbox;
+    }
+
+    public Item[] getInventory() {
+        return this.inventory;
+    }
+
+    public int getMainHandIndex() {
+        return this.MainHandIndex;
+    }
+
+    // Setters
+    public void setHealth(int health) {
+        this.health = health;
+    }
+
+    public void setMaxHealth(int maxHealth) {
+        this.maxHealth = maxHealth;
+    }
+
+    public void setSpeed(int speed) {
+        this.speed = speed;
+    }
+
+    public void setAttackRange(int attackRange) {
+        this.attackRange = attackRange;
+    }
+
+    public void setAttackAngle(int attackAngle) {
+        this.attackAngle = attackAngle;
+    }
+
+    public void setHitbox(Rectangle2D hitbox) {
+        this.hitbox = hitbox;
+    }
+
+    public void setInventory(Item[] inventory) {
+        this.inventory = inventory;
+    }
+
+    public void setMainHandIndex(int mainHandIndex) {
+        this.MainHandIndex = mainHandIndex;
     }
 
 }
