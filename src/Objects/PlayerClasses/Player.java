@@ -117,7 +117,6 @@ public class Player extends Entity {
     public void attack(int clickXDown, int clickYDown,int currentTick) {
         MeleeWeapon weapon = getEquippedWeapon();
         if (weapon != null) {
-            System.out.println("hi");
             weapon.attack(clickXDown, clickYDown, currentTick, this.x + this.width/2, this.y + this.height/2);
         }
     }
