@@ -1,11 +1,12 @@
 package Levels;
 
 import Objects.*;
-import Objects.Buttons.*;
 import Objects.EnemyClasses.*;
 import Objects.PlayerClasses.Player;
 import Objects.PlayerEquipment.MeleeWeapon;
 import Objects.Terrain.*;
+import ShapeCore.Buttons.*;
+
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -16,8 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
-
-
 
 public class BaseLevel {
 
@@ -33,9 +32,7 @@ public class BaseLevel {
     protected int offsetX = 0;
     protected int offsetY = 0;
     protected Color backgroundColor = null;
-    
-    
-    
+
     // Queues for deferred add/remove
     protected List<VisualObject> addList = new LinkedList<>();
     protected List<VisualObject> removeList = new LinkedList<>();
@@ -70,7 +67,7 @@ public class BaseLevel {
      * Get the currently equipped melee weapon (if any)
      */
     private MeleeWeapon getEquippedWeapon() {
-        if (this.player.getMainHandIndex() >= 0 && this.player.getMainHandIndex() < this.player.getInventory().length 
+        if (this.player.getMainHandIndex() >= 0 && this.player.getMainHandIndex() < this.player.getInventory().length
                 && this.player.getInventory()[this.player.getMainHandIndex()] instanceof MeleeWeapon) {
             return (MeleeWeapon) this.player.getInventory()[this.player.getMainHandIndex()];
         }
@@ -117,21 +114,25 @@ public class BaseLevel {
     }
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+        this.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, 0);
+    }
+
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, int scrollDelta) {
         // Draw level elements
-    	
+
         this.drawBG(g);
         this.updateOffset();
         this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
         this.mouseHandler(clickXDown, clickYDown, tickCount);
+        this.scrollHandler(scrollDelta);
         for (ArrayList<VisualObject> row : this.levelVisualObjects) {
             for (VisualObject obj : row) {
                 if (obj != null) {
-                	if (obj instanceof Player) {
-                		((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
-                	}
-                	else {
-                		obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
-                	}
+                    if (obj instanceof Player) {
+                        ((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
+                    } else {
+                        obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+                    }
 //                    obj.testWorking();
                 }
             }
@@ -140,7 +141,7 @@ public class BaseLevel {
         this.displayUI(g); // Display UI elements
         // After iteration, process queued changes
         this.processQueuedVisualObjectChanges();
-        
+
         // System.out.println("BaseLevel tick: " + tickCount);
     }
 
@@ -187,108 +188,132 @@ public class BaseLevel {
     }
 
     public void keyHandler(Set<Integer> pressedKeys, int clickXDown, int clickYDown, int tickCount) {
-        
-            // Handle movement
 
-            int nextX = player.getX();
-            int nextY = player.getY();
-            int speed = (int) player.getSpeed();
+        // Handle movement
+        int nextX = player.getX();
+        int nextY = player.getY();
+        int speed = (int) player.getSpeed();
 
-            int moveX = 0;
-            int moveY = 0;
+        int moveX = 0;
+        int moveY = 0;
 
-            if (pressedKeys.contains(82) && player.rolls > 0) { // R
-                if (pressedKeys.contains(65)) { // A
-                    moveX -= 50 * speed;
-                }
-                if (pressedKeys.contains(68)) { // D
-                    moveX += 50 * speed;
-                }
-                if (pressedKeys.contains(87)) { // W
-                    moveY -= 50 * speed;
-                }
-                if (pressedKeys.contains(83)) { // S
-                    moveY += 50 * speed;
-                }
-                player.rollCooldown(tickCount, 180); // Start roll cooldown
+        if (pressedKeys.contains(82) && player.rolls > 0) { // R
+            if (pressedKeys.contains(65)) { // A
+                moveX -= 50 * speed;
             }
-            if (!this.isPlayerWeaponAnimating()) {
-                if (pressedKeys.contains(65)) { // A
-                    moveX -= speed;
-                }
-                if (pressedKeys.contains(68)) { // D
-                    moveX += speed;
-                }
-                if (pressedKeys.contains(87)) { // W
-                    moveY -= speed;
-                }
-                if (pressedKeys.contains(83)) { // S
-                    moveY += speed;
+            if (pressedKeys.contains(68)) { // D
+                moveX += 50 * speed;
+            }
+            if (pressedKeys.contains(87)) { // W
+                moveY -= 50 * speed;
+            }
+            if (pressedKeys.contains(83)) { // S
+                moveY += 50 * speed;
+            }
+            player.rollCooldown(tickCount, 180); // Start roll cooldown
+        }
+        if (!this.isPlayerWeaponAnimating()) {
+            if (pressedKeys.contains(65)) { // A
+                moveX -= speed;
+            }
+            if (pressedKeys.contains(68)) { // D
+                moveX += speed;
+            }
+            if (pressedKeys.contains(87)) { // W
+                moveY -= speed;
+            }
+            if (pressedKeys.contains(83)) { // S
+                moveY += speed;
+            }
+            // Handle inventory switching with number keys 1-9
+            for (int i = 1; i <= 9; i++) {
+                if (pressedKeys.contains(48 + i)) { // Key codes 49-57 for '1'-'9'
+                    player.setMainHandIndex(i - 1); // Set MainHandIndex to 0-8
+                    break;
                 }
             }
+        }
 
-            // Try to move as close as possible to the border
-            int finalX = nextX;
-            int finalY = nextY;
+        // Try to move as close as possible to the border
+        int finalX = nextX;
+        int finalY = nextY;
 
-            // Move in X direction
-            if (moveX != 0) {
-                int stepX = moveX > 0 ? 1 : -1;
-                for (int i = 0; i < Math.abs(moveX); i++) {
-                    int testX = finalX + stepX;
-                    boolean collides = false;
-                    for (VisualObject obj : this.levelVisualObjects.get(1)) {
-                        if (obj instanceof Border) {
-                            if (testX < obj.getX() + obj.getWidth()
-                                    && testX + player.getWidth() > obj.getX()
-                                    && finalY < obj.getY() + obj.getHeight()
-                                    && finalY + player.getHeight() > obj.getY()) {
-                                collides = true;
-                                break;
-                            }
+        // Move in X direction
+        if (moveX != 0) {
+            int stepX = moveX > 0 ? 1 : -1;
+            for (int i = 0; i < Math.abs(moveX); i++) {
+                int testX = finalX + stepX;
+                boolean collides = false;
+                for (VisualObject obj : this.levelVisualObjects.get(1)) {
+                    if (obj instanceof Border) {
+                        if (testX < obj.getX() + obj.getWidth()
+                                && testX + player.getWidth() > obj.getX()
+                                && finalY < obj.getY() + obj.getHeight()
+                                && finalY + player.getHeight() > obj.getY()) {
+                            collides = true;
+                            break;
                         }
                     }
-                    if (collides) {
-                        break;
-                    }
-                    finalX = testX;
                 }
+                if (collides) {
+                    break;
+                }
+                finalX = testX;
             }
+        }
 
-            // Move in Y direction
-            if (moveY != 0) {
-                int stepY = moveY > 0 ? 1 : -1;
-                for (int i = 0; i < Math.abs(moveY); i++) {
-                    int testY = finalY + stepY;
-                    boolean collides = false;
-                    for (VisualObject obj : this.levelVisualObjects.get(1)) {
-                        if (obj instanceof Border) {
-                            if (finalX < obj.getX() + obj.getWidth()
-                                    && finalX + player.getWidth() > obj.getX()
-                                    && testY < obj.getY() + obj.getHeight()
-                                    && testY + player.getHeight() > obj.getY()) {
-                                collides = true;
-                                break;
-                            }
+        // Move in Y direction
+        if (moveY != 0) {
+            int stepY = moveY > 0 ? 1 : -1;
+            for (int i = 0; i < Math.abs(moveY); i++) {
+                int testY = finalY + stepY;
+                boolean collides = false;
+                for (VisualObject obj : this.levelVisualObjects.get(1)) {
+                    if (obj instanceof Border) {
+                        if (finalX < obj.getX() + obj.getWidth()
+                                && finalX + player.getWidth() > obj.getX()
+                                && testY < obj.getY() + obj.getHeight()
+                                && testY + player.getHeight() > obj.getY()) {
+                            collides = true;
+                            break;
                         }
                     }
-                    if (collides) {
-                        break;
-                    }
-                    finalY = testY;
                 }
+                if (collides) {
+                    break;
+                }
+                finalY = testY;
             }
+        }
 
-            player.setX(finalX);
-            player.setY(finalY);
-        
+        player.setX(finalX);
+        player.setY(finalY);
+
     }
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
-        if (clickXDown ==-1 || clickYDown ==-1) {return;}
+        if (clickXDown == -1 || clickYDown == -1) {
+            return;
+        }
         if (this.player != null) {
-            
+
             this.player.attack(clickXDown, clickYDown, currentTick);
+        }
+    }
+
+    public void scrollHandler(int scrollDelta) {
+        if (scrollDelta != 0 && this.player != null) {
+            int currentIndex = this.player.getMainHandIndex();
+            int newIndex = currentIndex + scrollDelta;
+            
+            // Wrap around inventory (0-8)
+            if (newIndex < 0) {
+                newIndex = 8;
+            } else if (newIndex > 8) {
+                newIndex = 0;
+            }
+            
+            this.player.setMainHandIndex(newIndex);
         }
     }
 
@@ -357,13 +382,16 @@ public class BaseLevel {
     protected void initLevel() {
         // Initialize level-specific elements
     }
+
     protected void addBorder(Border b) {
-    	this.levelVisualObjects.get(1).add(b);
+        this.levelVisualObjects.get(1).add(b);
     }
+
     protected void addEnemy(Enemy e) {
-    	this.levelVisualObjects.get(2).add(e);
+        this.levelVisualObjects.get(2).add(e);
     }
+
     protected void addButton(Button b) {
-    	this.levelVisualObjects.get(3).add(b);
+        this.levelVisualObjects.get(3).add(b);
     }
 }

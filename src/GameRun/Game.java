@@ -26,7 +26,7 @@ public class Game {
         this.toAdd.clear();
     }
 
-    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
+    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int scrollDelta) {
     	
     	this.tickCount++;
         for (int i = this.visualObjects.size() - 1; i >= 0; i--) {
@@ -41,7 +41,7 @@ public class Game {
         this.toAdd.clear();
         if (this.currentLevel != null) {
         	
-            this.currentLevel.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount);
+            this.currentLevel.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount, scrollDelta);
         }
     }
 
@@ -49,7 +49,7 @@ public class Game {
         g.fillRect(0, 0, 1900, 1300);
     }
 
-    public void screenUpdate(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp) {
+    public void screenUpdate(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int scrollDelta) {
         switch (this.state) {
             case INITIALIZED_1:
                 g.setColor(Color.GRAY);
@@ -67,7 +67,7 @@ public class Game {
                 System.out.println("Unknown state: " + this.state);
 
         }
-        this.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp);
+        this.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, scrollDelta);
     }
 
     public void changeState(GameStates newState) {
@@ -95,7 +95,7 @@ public class Game {
         this.toRemove.addAll(this.visualObjects);
         switch (this.state) {
             case INITIALIZED_1:
-                this.toAdd.add(new Objects.Buttons.StartButton(50, 50, 200, 100, this));
+                this.toAdd.add(new ShapeCore.Buttons.StartButton(50, 50, 200, 100, this));
                 // System.out.println("Start Button added");
 
                 break;
@@ -103,9 +103,9 @@ public class Game {
             case GAME_STARTED_0:
                 this.toRemove.addAll(this.visualObjects);
 
-                this.toAdd.add(new Objects.Buttons.ClassSelectionButtons.RogueButton(200, 400, 100, 50, this));
-                this.toAdd.add(new Objects.Buttons.ClassSelectionButtons.WizardButton(400, 400, 100, 50, this));
-                this.toAdd.add(new Objects.Buttons.ClassSelectionButtons.TankButton(600, 400, 100, 50, this));
+                this.toAdd.add(new ShapeCore.Buttons.ClassSelectionButtons.RogueButton(200, 400, 100, 50, this));
+                this.toAdd.add(new ShapeCore.Buttons.ClassSelectionButtons.WizardButton(400, 400, 100, 50, this));
+                this.toAdd.add(new ShapeCore.Buttons.ClassSelectionButtons.TankButton(600, 400, 100, 50, this));
 
                 break;
             case LEVEL_1:

@@ -12,6 +12,7 @@ public class App extends JPanel {
     private int clickYDown = -1;
     private int clickXUp = -1;
     private int clickYUp = -1;
+    private int scrollDelta = 0;
     private final Set<Integer> pressedKeys = new HashSet<>();
     private final Game game;
 
@@ -50,6 +51,14 @@ public class App extends JPanel {
             }
         });
 
+        // Mouse wheel listener to detect scroll
+        addMouseWheelListener(new MouseAdapter() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                scrollDelta = -e.getWheelRotation(); // negative because scroll up = positive
+            }
+        });
+
         Timer timer = new Timer(17, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -60,13 +69,14 @@ public class App extends JPanel {
     }
 
     private void tick(Graphics g) {
-        this.game.tick(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp);  // Call the game's tick method
+        this.game.tick(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp, this.scrollDelta);  // Call the game's tick method
         
         
         this.clickXDown = -1;
         this.clickYDown = -1;
         this.clickXUp = -1;
         this.clickYUp = -1;
+        this.scrollDelta = 0; // Reset scroll delta after processing
     }
 
     @Override
@@ -81,7 +91,7 @@ public class App extends JPanel {
         //     g.drawString("- " + keyName, 10, y);
         //     y += 20;
         // }
-        game.screenUpdate(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp);
+        game.screenUpdate(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp, this.scrollDelta);
         // g.drawString("Tick count: " + tickCount, 150, 20);
     }
 
