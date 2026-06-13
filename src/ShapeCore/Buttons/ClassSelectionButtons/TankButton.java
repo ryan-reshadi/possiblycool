@@ -1,8 +1,8 @@
-package Objects.Buttons.ClassSelectionButtons;
+package ShapeCore.Buttons.ClassSelectionButtons;
 
 import GameRun.Game;
 import GameRun.GameStates;
-import Objects.Buttons.Button;
+import ShapeCore.Buttons.Button;
 import java.awt.Color;
 
 public class TankButton extends Button {

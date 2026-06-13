@@ -2,8 +2,8 @@ package Levels;
 
 import Objects.PlayerClasses.*;
 import Objects.Terrain.Border;
+import ShapeCore.Buttons.*;
 import Objects.VisualObject;
-import Objects.Buttons.*;
 import Objects.EnemyClasses.*;
 
 import java.awt.Color;

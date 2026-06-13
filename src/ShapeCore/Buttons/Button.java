@@ -1,4 +1,4 @@
-package Objects.Buttons;
+package ShapeCore.Buttons;
 
 import GameRun.Game;
 import Objects.VisualObject;
