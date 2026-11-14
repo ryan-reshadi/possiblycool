@@ -13,10 +13,10 @@ public class Dagger extends MeleeWeapon {
         this.attackDamageDelay = secondsToTicks(0.08);
         this.knockbackForce = 3.0;
         setCombo(
-                move(75, 20, 0.20, 0.07, 1, 0.75),
-                move(75, 20, 0.20, 0.07, 1, 0.75),
-                move(60, 70, 0.27, 0.10, 0.8, 1.0),
-                move(50, 10, 0.15, 0.05, 1.3, 1.35)
+                move(90, 20, 0.20, 0.07, 1, 0.75),
+                move(90, 20, 0.20, 0.07, 1, 0.75),
+                move(70, 70, 0.27, 0.10, 0.8, 1.0),
+                move(80, 10, 0.15, 0.05, 1.3, 1.35)
         );
         this.name = "Rogue Dagger";
         this.description = "Fast three-hit combo that builds from quick stabs into a wide finishing slash.";

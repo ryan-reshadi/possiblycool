@@ -86,9 +86,10 @@ public class Level1 extends BaseLevel {
             LootTable.item(3, () -> new Armor("Steel Chestplate", "Heavy armor. 30% damage reduction.", 0.30, ArmorSlot.BODY)),
             LootTable.item(5, HealthPotion::new)
         );
-        Chest chest = new Chest(1250, 200, chestLoot, 3, items -> {
-            int lootX = 1230;
-            int lootY = 244;
+        Chest chest = new Chest(1250, 200, chestLoot, 3, null);
+        chest.setOnOpenAt((items, chestPosition) -> {
+            int lootX = chestPosition.x - 20;
+            int lootY = chestPosition.y + 44;
             for (int i = 0; i < items.size(); i++) {
                 Item it = items.get(i);
                 queueAddVisualObject(new DroppedItem(lootX + (i * 36), lootY, it, this::collectItem));

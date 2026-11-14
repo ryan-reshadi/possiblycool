@@ -7,9 +7,11 @@ import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.ArrayList;
 
 public class Chest extends VisualObject {
@@ -19,6 +21,7 @@ public class Chest extends VisualObject {
     private final LootTable lootTable;
     private final int lootCount;
     private final Consumer<List<Item>> onOpen;
+    private BiConsumer<List<Item>, Point> onOpenAt;
 
     public Chest(int x, int y, List<Item> contents, Consumer<List<Item>> onOpen) {
         super(x, y, 48, 36, new Color(139, 69, 19));
@@ -42,16 +45,19 @@ public class Chest extends VisualObject {
         return opened;
     }
 
+    public void setOnOpenAt(BiConsumer<List<Item>, Point> callback) {
+        this.onOpenAt = callback;
+    }
+
     public boolean tryOpen(Player player, Set<Integer> pressedKeys) {
         if (!opened && player != null && checkCollision(player, 15, 15)) {
             // E key = 69
             if (pressedKeys != null && pressedKeys.contains(69)) {
                 opened = true;
-                if (onOpen != null) {
-                    List<Item> contents = lootTable == null
-                            ? new ArrayList<>(fixedContents) : lootTable.roll(player, lootCount);
-                    onOpen.accept(contents);
-                }
+                List<Item> contents = lootTable == null
+                        ? new ArrayList<>(fixedContents) : lootTable.roll(player, lootCount);
+                if (onOpen != null) onOpen.accept(contents);
+                if (onOpenAt != null) onOpenAt.accept(contents, new Point(x, y));
                 return true;
             }
         }
