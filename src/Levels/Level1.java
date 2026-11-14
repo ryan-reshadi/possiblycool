@@ -4,12 +4,18 @@ import Objects.DroppedItem;
 import Objects.EnemyClasses.BossEnemy;
 import Objects.EnemyClasses.Enemy;
 import Objects.EnemyClasses.MeleeEnemy;
+import Objects.EnemyClasses.BerserkerWeapon;
+import Objects.EnemyClasses.TankWeapon;
+import Objects.EnemyClasses.RangedWeapon;
 import Objects.PlayerClasses.Player;
 import Objects.PlayerEquipment.Armor;
 import Objects.PlayerEquipment.Armor.ArmorSlot;
 import Objects.PlayerEquipment.HealthPotion;
 import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.LootTable;
 import Objects.PlayerEquipment.Weapons.Hammer;
+import Objects.PlayerEquipment.Weapons.Dagger;
+import Objects.PlayerEquipment.Weapons.BasicWand;
 import Objects.Terrain.Border;
 import Objects.Terrain.BossDoor;
 import Objects.Terrain.Checkpoint;
@@ -18,7 +24,6 @@ import Objects.VisualObject;
 
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class Level1 extends BaseLevel {
@@ -62,17 +67,26 @@ public class Level1 extends BaseLevel {
         addBorder(new Border(1330, 150, 20, 170, wallColor));
         addBorder(new Border(1330, 420, 20, 180, wallColor));
 
-        // Room 1 Enemies (2 Melee Enemies with loot drops)
-        spawnLootEnemy(950, 250, new HealthPotion());
-        spawnLootEnemy(1100, 420, new Armor("Iron Helmet", "Provides 15% damage reduction.", 0.15, ArmorSlot.HEAD));
-
-        // Room 1 Chest (Contains Hammer and Body Armor)
-        List<Item> chestLoot = Arrays.asList(
-            new Hammer(),
-            new Armor("Steel Chestplate", "Heavy armor. 30% damage reduction.", 0.30, ArmorSlot.BODY),
-            new HealthPotion()
+        // Room 1 enemies roll from a player-compatible drop table.
+        LootTable enemyLoot = LootTable.of(
+            LootTable.item(6, HealthPotion::new),
+            LootTable.item(2, () -> new Armor("Iron Helmet", "Provides 15% damage reduction.", 0.15, ArmorSlot.HEAD)),
+            LootTable.item(2, Hammer::new),
+            LootTable.item(2, Dagger::new),
+            LootTable.item(2, BasicWand::new)
         );
-        Chest chest = new Chest(1250, 200, chestLoot, items -> {
+        spawnLootEnemy(950, 250, enemyLoot);
+        spawnLootEnemy(1100, 420, enemyLoot);
+
+        // Room 1 chest rolls three weighted rewards on opening.
+        LootTable chestLoot = LootTable.of(
+            LootTable.item(2, Hammer::new),
+            LootTable.item(2, Dagger::new),
+            LootTable.item(2, BasicWand::new),
+            LootTable.item(3, () -> new Armor("Steel Chestplate", "Heavy armor. 30% damage reduction.", 0.30, ArmorSlot.BODY)),
+            LootTable.item(5, HealthPotion::new)
+        );
+        Chest chest = new Chest(1250, 200, chestLoot, 3, items -> {
             for (int i = 0; i < items.size(); i++) {
                 Item it = items.get(i);
             queueAddVisualObject(new DroppedItem(1230 + (i * 30), 250, it, this::collectItem));
@@ -119,8 +133,12 @@ public class Level1 extends BaseLevel {
         addBorder(new Border(2630, 150, 20, 500, wallColor)); // Right
         addBorder(new Border(2050, 630, 600, 20, wallColor)); // Bottom
 
+        spawnRanged(2150, 260);
+        spawnRanged(2450, 500);
+
         // Placeholder Boss Enemy
         BossEnemy boss = new BossEnemy(2350, 350);
+        boss.setWeapon(new RangedWeapon(16, 70, 500, 7.0));
         boss.setOnDeath(() -> {
             System.out.println("Boss defeated!");
             queueAddVisualObject(new DroppedItem(2350, 350, new HealthPotion(), this::collectItem));
@@ -128,11 +146,15 @@ public class Level1 extends BaseLevel {
         addEnemy(boss);
     }
 
-    private void spawnLootEnemy(int x, int y, Item dropItem) {
+    private void spawnLootEnemy(int x, int y, LootTable lootTable) {
         MeleeEnemy e = new MeleeEnemy(x, y);
+        e.setWeapon(new TankWeapon());
         e.setOnDeath(() -> {
-            if (dropItem != null) {
-                queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), dropItem, this::collectItem));
+            if (lootTable != null) {
+                List<Item> drops = lootTable.roll(player, 1);
+                if (!drops.isEmpty()) {
+                    queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), drops.get(0), this::collectItem));
+                }
             }
         });
         addEnemy(e);
@@ -140,6 +162,7 @@ public class Level1 extends BaseLevel {
 
     private void spawnGuard(int x, int y) {
         MeleeEnemy e = new MeleeEnemy(x, y);
+        e.setWeapon(new BerserkerWeapon());
         room2Guards.add(e);
         e.setOnDeath(() -> {
             room2Guards.remove(e);
@@ -148,6 +171,13 @@ public class Level1 extends BaseLevel {
                 bossDoor.unlock();
             }
         });
+        addEnemy(e);
+    }
+
+    private void spawnRanged(int x, int y) {
+        MeleeEnemy e = new MeleeEnemy(x, y, 45, 10, 450, 1, 300);
+        e.setWeapon(new RangedWeapon());
+        e.setOnDeath(() -> queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), new HealthPotion(), this::collectItem)));
         addEnemy(e);
     }
 }

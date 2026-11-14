@@ -40,6 +40,12 @@ public class Enemy extends Entity {
     protected int interruptedUntilTick = -1;
     protected int currentTick;
     protected List<? extends VisualObject> borders = java.util.Collections.emptyList();
+    protected EnemyWeapon weapon;
+    protected double dashAngle, dashSpeed;
+    protected int dashTicks, dashTellTicks;
+    protected double tellAngle;
+    protected int tellLength;
+    protected java.util.function.Consumer<VisualObject> projectileSink;
 
     // Drop table callback
     protected Runnable onDeath = null;
@@ -74,6 +80,8 @@ public class Enemy extends Entity {
     public void setBorders(List<? extends VisualObject> borders) {
         this.borders = borders != null ? borders : java.util.Collections.emptyList();
     }
+    public void setProjectileSink(java.util.function.Consumer<VisualObject> sink) { projectileSink = sink; }
+    public void setWeapon(EnemyWeapon weapon) { this.weapon = weapon; }
 
     /** Move along each axis only when the enemy's hitbox remains clear of walls. */
     protected void moveWithWallCollision(int dx, int dy) {
@@ -254,8 +262,17 @@ public class Enemy extends Entity {
             }
         }
 
+        if (weapon instanceof BerserkerWeapon) drawDashTell(g);
         draw(g);
+        if (weapon != null && targetPlayer != null) weapon.aim(this, targetPlayer, (java.awt.Graphics2D) g);
         drawHealthBar(g);
+    }
+
+    protected void drawDashTell(Graphics g) {
+        if (dashTellTicks <= 0) return;
+        g.setColor(dashTicks > 0 ? Color.RED : Color.WHITE);
+        int cx = x + width / 2, cy = y + height / 2;
+        g.drawLine(cx, cy, cx + (int)(Math.cos(tellAngle)*tellLength), cy + (int)(Math.sin(tellAngle)*tellLength));
     }
 
     protected void drawHealthBar(Graphics g) {

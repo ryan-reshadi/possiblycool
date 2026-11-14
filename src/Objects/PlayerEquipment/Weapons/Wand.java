@@ -3,6 +3,7 @@ package Objects.PlayerEquipment.Weapons;
 import Levels.BaseLevel;
 import Objects.EnemyClasses.Enemy;
 import Objects.PlayerClasses.Player;
+import Objects.PlayerClasses.WizardPlayer;
 import Objects.PlayerEquipment.Item;
 import Objects.PlayerEquipment.Spells.*;
 import Objects.Projectile;
@@ -33,6 +34,7 @@ public class Wand extends Item {
     private static final Random random = new Random();
 
     public Wand(String name, int firingCooldown, AttackPattern pattern) {
+        setAllowedClasses(WizardPlayer.class);
         this.name = name;
         this.firingCooldown = firingCooldown;
         this.attackPattern = pattern;

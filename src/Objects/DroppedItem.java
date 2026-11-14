@@ -62,6 +62,9 @@ public class DroppedItem extends VisualObject {
         }
 
         if (checkCollision(player)) {
+            if (item != null && !item.canBeUsedBy(player)) {
+                return false;
+            }
             pickedUp = true;
             this.visible = false;
             if (onPickup != null) {

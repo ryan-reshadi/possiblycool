@@ -5,6 +5,8 @@ import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
 
 public abstract class Item {
 
@@ -12,6 +14,25 @@ public abstract class Item {
     protected String description = "";
     protected Color iconColor = Color.GRAY;
     protected String spritePath = null;
+    private Set<Class<? extends Player>> allowedClasses = Collections.emptySet();
+
+    public void setAllowedClasses(Class<? extends Player>... classes) {
+        this.allowedClasses = classes == null ? Collections.emptySet()
+                : Collections.unmodifiableSet(new java.util.HashSet<>(java.util.Arrays.asList(classes)));
+    }
+
+    public boolean canBeUsedBy(Player player) {
+        if (allowedClasses.isEmpty()) return true;
+        if (player == null) return false;
+        for (Class<? extends Player> allowed : allowedClasses) {
+            if (allowed.isInstance(player)) return true;
+        }
+        return false;
+    }
+
+    public Set<Class<? extends Player>> getAllowedClasses() {
+        return allowedClasses;
+    }
 
     public Item(boolean visible, String imgpath) {
         if (!visible) {

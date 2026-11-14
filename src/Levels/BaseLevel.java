@@ -141,8 +141,6 @@ public class BaseLevel {
         this.drawBG(g);
 
         if (this.player != null && !this.player.isDead()) {
-            this.updateOffset();
-
             // Feed current enemy list and level into equipped weapon
             List<Enemy> activeEnemies = getEnemies();
             Item equipped = this.player.getEquippedItem();
@@ -175,8 +173,10 @@ public class BaseLevel {
                         if (obj instanceof Player) {
                             ((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
                         } else if (obj instanceof Enemy) {
-                            ((Enemy) obj).setBorders(this.levelVisualObjects.get(1));
-                            ((Enemy) obj).checkAggro(this.player);
+                            Enemy enemy = (Enemy) obj;
+                            enemy.setBorders(this.levelVisualObjects.get(1));
+                            enemy.setProjectileSink(this::queueAddVisualObject);
+                            enemy.checkAggro(this.player);
                             obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
                         } else {
                             obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
@@ -184,6 +184,12 @@ public class BaseLevel {
                     }
                 }
             }
+        }
+
+        // Follow after movement so the camera responds to the player's current
+        // position instead of chasing the previous frame's position.
+        if (this.player != null && !this.player.isDead()) {
+            this.updateOffset();
         }
 
         // Draw HUD overlay
@@ -439,28 +445,25 @@ public class BaseLevel {
         int dx = 0;
         int dy = 0;
 
-        // Keep the player in a generous central dead zone. Once they leave it,
-        // ease the whole scene, including the player, so scrolling visibly carries
-        // them against the screen while their input movement is applied afterward.
+        // Leave the camera still until the player approaches a screen edge. Then
+        // ease the scene toward the player's screen center, with a capped step so
+        // camera motion stays smooth and doesn't feel like a snap.
         int screenX = this.player.getX() + this.player.getWidth() / 2;
         int screenY = this.player.getY() + this.player.getHeight() / 2;
-        int horizontalMargin = Math.max(160, this.buffer * 2);
-        int verticalMargin = Math.max(120, this.buffer * 2);
+        int horizontalMargin = 100;
+        int verticalMargin = 80;
+        int centerX = 1900 / 2;
+        int centerY = 1000 / 2;
         int left = horizontalMargin;
         int right = 1900 - horizontalMargin;
         int top = verticalMargin;
         int bottom = 1000 - verticalMargin;
 
-        if (screenX < left) {
-            dx = Math.min(8, Math.max(1, (left - screenX) / 4));
-        } else if (screenX > right) {
-            dx = -Math.min(8, Math.max(1, (screenX - right) / 4));
+        if (screenX < left || screenX > right) {
+            dx = smoothCameraStep(centerX - screenX);
         }
-
-        if (screenY < top) {
-            dy = Math.min(8, Math.max(1, (top - screenY) / 4));
-        } else if (screenY > bottom) {
-            dy = -Math.min(8, Math.max(1, (screenY - bottom) / 4));
+        if (screenY < top || screenY > bottom) {
+            dy = smoothCameraStep(centerY - screenY);
         }
 
         if (dx != 0 || dy != 0) {
@@ -476,6 +479,15 @@ public class BaseLevel {
                 }
             }
         }
+    }
+
+    private int smoothCameraStep(int distance) {
+        // Move a substantial fraction of the remaining distance each frame,
+        // while capping large jumps. This converges to center smoothly and
+        // avoids the slow, repeated edge correction of the previous behavior.
+        int step = (int) Math.round(distance * 0.22);
+        if (step == 0 && distance != 0) step = Integer.signum(distance);
+        return Math.max(-48, Math.min(48, step));
     }
 
     protected void initLevel() {

@@ -21,6 +21,7 @@ public class MeleeEnemy extends Enemy {
 
     @Override
     public void aggroLogic(int currentTick) {
+        if (weapon != null) { weapon.update(this, targetPlayer, currentTick); return; }
         if (this.targetPlayer != null && !this.targetPlayer.isDead()) {
             double distance = getDistanceToPlayer();
             if (distance > this.attackRange) {

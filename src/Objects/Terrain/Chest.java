@@ -2,6 +2,7 @@ package Objects.Terrain;
 
 import Objects.PlayerClasses.Player;
 import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.LootTable;
 import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Font;
@@ -9,16 +10,30 @@ import java.awt.Graphics;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.ArrayList;
 
 public class Chest extends VisualObject {
 
     private boolean opened = false;
-    private final List<Item> contents;
+    private final List<Item> fixedContents;
+    private final LootTable lootTable;
+    private final int lootCount;
     private final Consumer<List<Item>> onOpen;
 
     public Chest(int x, int y, List<Item> contents, Consumer<List<Item>> onOpen) {
         super(x, y, 48, 36, new Color(139, 69, 19));
-        this.contents = contents;
+        this.fixedContents = contents == null ? new ArrayList<>() : new ArrayList<>(contents);
+        this.lootTable = null;
+        this.lootCount = 0;
+        this.onOpen = onOpen;
+        this.moveable = true;
+    }
+
+    public Chest(int x, int y, LootTable lootTable, int lootCount, Consumer<List<Item>> onOpen) {
+        super(x, y, 48, 36, new Color(139, 69, 19));
+        this.fixedContents = null;
+        this.lootTable = lootTable;
+        this.lootCount = Math.max(0, lootCount);
         this.onOpen = onOpen;
         this.moveable = true;
     }
@@ -33,6 +48,8 @@ public class Chest extends VisualObject {
             if (pressedKeys != null && pressedKeys.contains(69)) {
                 opened = true;
                 if (onOpen != null) {
+                    List<Item> contents = lootTable == null
+                            ? new ArrayList<>(fixedContents) : lootTable.roll(player, lootCount);
                     onOpen.accept(contents);
                 }
                 return true;

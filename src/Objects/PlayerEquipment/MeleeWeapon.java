@@ -11,6 +11,25 @@ import java.util.List;
 
 public abstract class MeleeWeapon extends Item {
 
+    protected static class AttackMove {
+        final int range;
+        final int angle;
+        final int animationTicks;
+        final int damageDelayTicks;
+        final double damageMultiplier;
+        final double knockbackMultiplier;
+
+        protected AttackMove(int range, int angle, int animationTicks, int damageDelayTicks,
+                             double damageMultiplier, double knockbackMultiplier) {
+            this.range = range;
+            this.angle = angle;
+            this.animationTicks = animationTicks;
+            this.damageDelayTicks = damageDelayTicks;
+            this.damageMultiplier = damageMultiplier;
+            this.knockbackMultiplier = knockbackMultiplier;
+        }
+    }
+
     protected Animation attackAnimation;
     protected int attackAnimationLength = this.secondsToTicks(0.6);
     protected int attackDamageDelay = this.secondsToTicks(0.2);
@@ -24,6 +43,9 @@ public abstract class MeleeWeapon extends Item {
     protected Arc2D attackBox;
     protected boolean attackDamageApplied = false;
     protected List<Enemy> enemies;
+    private AttackMove[] comboMoves;
+    private int comboIndex;
+    private AttackMove activeMove;
 
     public MeleeWeapon(int attackRange, int attackAngle, int damage) {
         this.attackRange = attackRange;
@@ -47,8 +69,24 @@ public abstract class MeleeWeapon extends Item {
         this.damage = damage;
     }
 
+    protected final AttackMove move(int range, int angle, double durationSeconds, double damageDelaySeconds,
+                                    double damageMultiplier, double knockbackMultiplier) {
+        return new AttackMove(range, angle, secondsToTicks(durationSeconds),
+                secondsToTicks(damageDelaySeconds), damageMultiplier, knockbackMultiplier);
+    }
+
+    protected final void setCombo(AttackMove... moves) {
+        if (moves == null || moves.length == 0) throw new IllegalArgumentException("A melee combo needs at least one move.");
+        this.comboMoves = moves.clone();
+        this.comboIndex = 0;
+    }
+
     public void attack(int clickXDown, int clickYDown, int currentTick, int processedX, int processedY) {
         if (isInAnimation()) return;
+
+        activeMove = (comboMoves == null)
+                ? new AttackMove(attackRange, attackAngle, attackAnimationLength, attackDamageDelay, 1.0, 1.0)
+                : comboMoves[comboIndex];
 
         double deltaX = -1 * (processedX - clickXDown);
         double deltaY = -1 * (processedY - clickYDown);
@@ -61,12 +99,12 @@ public abstract class MeleeWeapon extends Item {
         double angleDegrees = Math.toDegrees(angleRadians);
 
         this.attackBox = new Arc2D.Double(
-                processedX - attackRange,
-                processedY - attackRange,
-                attackRange * 2,
-                attackRange * 2,
-                -1 * (angleDegrees + (attackAngle / 2.0)),
-                attackAngle,
+                processedX - activeMove.range,
+                processedY - activeMove.range,
+                activeMove.range * 2,
+                activeMove.range * 2,
+                -1 * (angleDegrees + (activeMove.angle / 2.0)),
+                activeMove.angle,
                 Arc2D.PIE
         );
 
@@ -83,14 +121,14 @@ public abstract class MeleeWeapon extends Item {
 
         AnimationSegment swingSegment = new AnimationSegment(
                 0,
-                attackAnimationLength,
+                activeMove.animationTicks,
                 () -> {},
                 () -> {},
                 null
         );
 
         AnimationSegment damageSegment = new AnimationSegment(
-                attackDamageDelay,
+                activeMove.damageDelayTicks,
                 1,
                 () -> applyAttackDamage(),
                 null,
@@ -111,7 +149,9 @@ public abstract class MeleeWeapon extends Item {
                 for (Enemy enemy : enemies) {
                     if (enemy != null && !enemy.isDead() && enemy.getHitbox() != null) {
                         if (touchingOtherHitBox(attackBox, enemy.getHitbox())) {
-                            enemy.hit(damage, attackSourceX, attackSourceY, knockbackForce, attackTick);
+                            int attackDamage = Math.max(1, (int) Math.round(damage * activeMove.damageMultiplier));
+                            enemy.hit(attackDamage, attackSourceX, attackSourceY,
+                                    knockbackForce * activeMove.knockbackMultiplier, attackTick);
                         }
                     }
                 }
@@ -122,6 +162,10 @@ public abstract class MeleeWeapon extends Item {
     protected void onAttackAnimationEnd() {
         attackBox = null;
         resetAnimation();
+        if (comboMoves != null) {
+            comboIndex = (comboIndex + 1) % comboMoves.length;
+        }
+        activeMove = null;
     }
 
     public void updateAttackAnimation() {
