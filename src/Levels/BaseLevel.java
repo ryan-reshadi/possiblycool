@@ -50,6 +50,9 @@ public class BaseLevel {
     private boolean qWasDown = false;
     private boolean eWasDown = false;
     private boolean fWasDown = false;
+    private boolean cameraInitialized = false;
+    private static final int PLAYER_SCREEN_X = 950;
+    private static final int PLAYER_SCREEN_Y = 500;
 
     public BaseLevel(int bgX, int bgY, String path, ArrayList<VisualObject> players) {
         this.bgX = bgX;
@@ -79,6 +82,8 @@ public class BaseLevel {
         this.levelVisualObjects.add(new ArrayList<>());     // 4: Projectiles / Effects / DroppedItems
         if (!players.isEmpty() && players.get(0) instanceof Player) {
             this.player = (Player) players.get(0);
+            this.player.setX(PLAYER_SCREEN_X - this.player.getWidth() / 2);
+            this.player.setY(PLAYER_SCREEN_Y - this.player.getHeight() / 2);
         }
     }
 
@@ -188,9 +193,7 @@ public class BaseLevel {
 
         // Follow after movement so the camera responds to the player's current
         // position instead of chasing the previous frame's position.
-        if (this.player != null && !this.player.isDead()) {
-            this.updateOffset();
-        }
+        if (this.player != null && !this.cameraInitialized) this.cameraInitialized = true;
 
         // Draw HUD overlay
         this.displayUI(g, tickCount);
@@ -420,8 +423,23 @@ public class BaseLevel {
             }
         }
 
-        player.setX(finalX);
-        player.setY(finalY);
+        movePlayerInWorld(finalX - player.getX(), finalY - player.getY());
+    }
+
+    /** Moves the world opposite to player travel while keeping the player screen-locked. */
+    public void movePlayerInWorld(int worldDx, int worldDy) {
+        if (player == null || (worldDx == 0 && worldDy == 0)) return;
+        int dx = -worldDx;
+        int dy = -worldDy;
+        offsetX += dx;
+        offsetY += dy;
+        bgX += dx;
+        bgY += dy;
+        for (int rowIndex = 1; rowIndex < levelVisualObjects.size(); rowIndex++) {
+            for (VisualObject obj : levelVisualObjects.get(rowIndex)) {
+                if (obj != null && obj.moveable) obj.move(dx, dy);
+            }
+        }
     }
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {

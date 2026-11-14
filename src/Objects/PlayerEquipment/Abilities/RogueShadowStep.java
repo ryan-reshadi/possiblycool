@@ -53,7 +53,7 @@ public class RogueShadowStep extends Ability {
 
         int dashDX = (int) (nx * DASH_DISTANCE);
         int dashDY = (int) (ny * DASH_DISTANCE);
-        player.move(dashDX, dashDY);
+        level.movePlayerInWorld(dashDX, dashDY);
     }
 
     @Override
