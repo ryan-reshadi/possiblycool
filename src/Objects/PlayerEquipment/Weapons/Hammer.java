@@ -7,8 +7,8 @@ import java.awt.Color;
 public class Hammer extends MeleeWeapon {
 
     public Hammer() {
-        setAllowedClasses(TankPlayer.class);
         super(90, 75, 45);
+        setAllowedClasses(TankPlayer.class);
         this.attackAnimationLength = secondsToTicks(0.8);
         this.attackDamageDelay = secondsToTicks(0.35);
         this.knockbackForce = 12.0;

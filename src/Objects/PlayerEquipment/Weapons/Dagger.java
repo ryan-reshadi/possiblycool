@@ -7,8 +7,8 @@ import java.awt.Color;
 public class Dagger extends MeleeWeapon {
 
     public Dagger() {
-        setAllowedClasses(RoguePlayer.class);
         super(55, 45, 18);
+        setAllowedClasses(RoguePlayer.class);
         this.attackAnimationLength = secondsToTicks(0.25);
         this.attackDamageDelay = secondsToTicks(0.08);
         this.knockbackForce = 3.0;

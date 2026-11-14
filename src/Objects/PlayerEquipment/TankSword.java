@@ -5,8 +5,8 @@ import Objects.PlayerClasses.TankPlayer;
 
 public class TankSword extends MeleeWeapon {
     public TankSword() {
-        setAllowedClasses(TankPlayer.class);
         super(80, 60, 30);
+        setAllowedClasses(TankPlayer.class);
         this.knockbackForce = 8.0;
         setCombo(
                 move(72, 44, 0.32, 0.12, 0.85, 0.8),
