@@ -6,7 +6,6 @@ import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.util.Set;
 
 /**
  * Visual explosion effect that expands and fades out.
@@ -24,16 +23,19 @@ public class ArcaneExplosionEffect extends VisualObject {
     }
 
     @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+    public void update(int tickCount) {
         ticksAlive++;
-        draw(g);
         if (ticksAlive >= maxTicks) {
             this.visible = false;
             if (onExpire != null) {
                 onExpire.run();
             }
         }
+    }
+
+    @Override
+    public void render(Graphics2D g, int tickCount) {
+        draw(g);
     }
 
     @Override

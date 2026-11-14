@@ -9,7 +9,6 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 import java.util.ArrayList;
@@ -49,25 +48,25 @@ public class Chest extends VisualObject {
         this.onOpenAt = callback;
     }
 
-    public boolean tryOpen(Player player, Set<Integer> pressedKeys) {
-        if (!opened && player != null && checkCollision(player, 15, 15)) {
-            // E key = 69
-            if (pressedKeys != null && pressedKeys.contains(69)) {
-                opened = true;
-                List<Item> contents = lootTable == null
-                        ? new ArrayList<>(fixedContents) : lootTable.roll(player, lootCount);
-                if (onOpen != null) onOpen.accept(contents);
-                if (onOpenAt != null) onOpenAt.accept(contents, new Point(x, y));
-                return true;
-            }
+    public boolean tryOpen(Player player, int targetX, int targetY) {
+        if (opened || player == null || !isWithinInteractionRange(player)
+                || targetX < x || targetX > x + width || targetY < y || targetY > y + height) {
+            return false;
         }
-        return false;
+        opened = true;
+        List<Item> contents = lootTable == null
+                ? new ArrayList<>(fixedContents) : lootTable.roll(player, lootCount);
+        if (onOpen != null) onOpen.accept(contents);
+        if (onOpenAt != null) onOpenAt.accept(contents, new Point(x, y));
+        return true;
     }
 
-    @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
-        draw(g);
+    private boolean isWithinInteractionRange(Player player) {
+        double playerX = player.getX() + player.getWidth() / 2.0;
+        double playerY = player.getY() + player.getHeight() / 2.0;
+        double chestX = x + width / 2.0;
+        double chestY = y + height / 2.0;
+        return Math.hypot(playerX - chestX, playerY - chestY) <= 100.0;
     }
 
     @Override
@@ -86,7 +85,7 @@ public class Chest extends VisualObject {
             g.setColor(Color.BLACK);
             g.drawRect(x, y, width, height);
             g.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            g.drawString("[E] Chest", x - 2, y - 5);
+            g.drawString("[Click] Chest", x - 2, y - 5);
         }
     }
 }

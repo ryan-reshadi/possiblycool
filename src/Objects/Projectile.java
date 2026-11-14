@@ -5,8 +5,8 @@ import Objects.PlayerEquipment.Spells.PassiveSpell;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A moving projectile fired by a Wand or ranged weapon.
@@ -21,13 +21,11 @@ public class Projectile extends VisualObject {
     private final Runnable onRemove;
 
     private List<Enemy> enemies;
+    private List<? extends VisualObject> walls;
     private PassiveSpell[] passives;
 
     private int ticksAlive = 0;
     public static final int MAX_LIFETIME_TICKS = 180;
-
-    private double px;
-    private double py;
 
     private boolean removed = false;
 
@@ -38,12 +36,14 @@ public class Projectile extends VisualObject {
         this.onRemove = onRemove;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
-        this.px = x;
-        this.py = y;
     }
 
     public void setEnemies(List<Enemy> enemies) {
         this.enemies = enemies;
+    }
+
+    public void setWalls(List<? extends VisualObject> walls) {
+        this.walls = walls;
     }
 
     public void setPassives(PassiveSpell[] passives) {
@@ -51,20 +51,23 @@ public class Projectile extends VisualObject {
     }
 
     @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+    public void update(int tickCount) {
         if (removed) return;
 
-        px += vx;
-        py += vy;
-        this.x = (int) px;
-        this.y = (int) py;
+        double nextX = this.x + vx;
+        double nextY = this.y + vy;
+        if (ProjectileCollision.hitsWall(x + width / 2.0, y + height / 2.0,
+                nextX + width / 2.0, nextY + height / 2.0, width, height, walls)) {
+            remove();
+            return;
+        }
+        this.x = (int) Math.round(nextX);
+        this.y = (int) Math.round(nextY);
 
         ticksAlive++;
 
         if (ticksAlive > MAX_LIFETIME_TICKS) {
-            removed = true;
-            if (onRemove != null) onRemove.run();
+            remove();
             return;
         }
 
@@ -79,14 +82,23 @@ public class Projectile extends VisualObject {
                             }
                         }
                     }
-                    removed = true;
-                    if (onRemove != null) onRemove.run();
+                    remove();
                     return;
                 }
             }
         }
 
-        draw(g);
+    }
+
+    private void remove() {
+        if (removed) return;
+        removed = true;
+        if (onRemove != null) onRemove.run();
+    }
+
+    @Override
+    public void render(Graphics2D g, int tickCount) {
+        if (!removed) draw(g);
     }
 
     @Override

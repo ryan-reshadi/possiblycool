@@ -8,11 +8,15 @@ import Objects.EnemyClasses.BerserkerWeapon;
 import Objects.EnemyClasses.TankWeapon;
 import Objects.EnemyClasses.RangedWeapon;
 import Objects.PlayerClasses.Player;
-import Objects.PlayerEquipment.Armor;
-import Objects.PlayerEquipment.Armor.ArmorSlot;
 import Objects.PlayerEquipment.HealthPotion;
 import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.KnightChestplate;
+import Objects.PlayerEquipment.KnightHelmet;
 import Objects.PlayerEquipment.LootTable;
+import Objects.PlayerEquipment.RogueHood;
+import Objects.PlayerEquipment.RogueTunic;
+import Objects.PlayerEquipment.WizardHat;
+import Objects.PlayerEquipment.WizardRobe;
 import Objects.PlayerEquipment.Weapons.Hammer;
 import Objects.PlayerEquipment.Weapons.Dagger;
 import Objects.PlayerEquipment.Weapons.BasicWand;
@@ -70,7 +74,9 @@ public class Level1 extends BaseLevel {
         // Room 1 enemies roll from a player-compatible drop table.
         LootTable enemyLoot = LootTable.of(
             LootTable.item(6, HealthPotion::new),
-            LootTable.item(2, () -> new Armor("Iron Helmet", "Provides 15% damage reduction.", 0.15, ArmorSlot.HEAD)),
+            LootTable.item(2, KnightHelmet::new),
+            LootTable.item(2, RogueHood::new),
+            LootTable.item(2, WizardHat::new),
             LootTable.item(2, Hammer::new),
             LootTable.item(2, Dagger::new),
             LootTable.item(2, BasicWand::new)
@@ -83,7 +89,9 @@ public class Level1 extends BaseLevel {
             LootTable.item(2, Hammer::new),
             LootTable.item(2, Dagger::new),
             LootTable.item(2, BasicWand::new),
-            LootTable.item(3, () -> new Armor("Steel Chestplate", "Heavy armor. 30% damage reduction.", 0.30, ArmorSlot.BODY)),
+            LootTable.item(3, KnightChestplate::new),
+            LootTable.item(3, RogueTunic::new),
+            LootTable.item(3, WizardRobe::new),
             LootTable.item(5, HealthPotion::new)
         );
         Chest chest = new Chest(1250, 200, chestLoot, 3, null);
@@ -147,6 +155,7 @@ public class Level1 extends BaseLevel {
             queueAddVisualObject(new DroppedItem(2350, 350, new HealthPotion(), this::collectItem));
         });
         addEnemy(boss);
+        this.objective = new DefeatBossObjective(boss);
     }
 
     private void spawnLootEnemy(int x, int y, LootTable lootTable) {

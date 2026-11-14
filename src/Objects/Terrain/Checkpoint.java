@@ -5,7 +5,6 @@ import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.util.Set;
 
 public class Checkpoint extends VisualObject {
 
@@ -30,12 +29,6 @@ public class Checkpoint extends VisualObject {
             return true;
         }
         return false;
-    }
-
-    @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
-        draw(g);
     }
 
     @Override

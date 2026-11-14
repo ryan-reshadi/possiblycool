@@ -1,12 +1,11 @@
 package Objects;
 
+import GameRun.AssetLoader;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
-import java.io.File;
-import java.io.IOException;
 import java.util.Set;
-import javax.imageio.ImageIO;
 
 public class VisualObject {
 
@@ -32,6 +31,9 @@ public class VisualObject {
         this.y = y;
         this.imgPath = imgPath;
         this.setImgPath(imgPath);
+        if (this.image == null) {
+            throw new IllegalArgumentException("An image resource is required for this constructor.");
+        }
         this.width = this.image.getWidth(null);
         this.height = this.image.getHeight(null);
     }
@@ -51,20 +53,7 @@ public class VisualObject {
 
     public void setImgPath(String imgPath) {
         this.imgPath = imgPath;
-        if (imgPath != null) {
-            try {
-                // Load the new image
-                File file = new File(this.imgPath);
-                if (!file.exists()) {
-                    System.out.println("Image file does not exist: " + this.imgPath);
-                    return;
-                }
-                this.image = ImageIO.read(file);
-            } catch (IOException e) {
-                System.out.println("Image could not be loaded.");
-                e.printStackTrace();
-            }
-        }
+        this.image = imgPath == null ? null : AssetLoader.loadImage(imgPath);
     }
 
     public void scaleImage(int newWidth, int newHeight) {
@@ -86,6 +75,10 @@ public class VisualObject {
 
     public void setVisible(Boolean visible) {
         this.visible = visible;
+    }
+
+    public boolean isVisible() {
+        return Boolean.TRUE.equals(visible);
     }
 
     public void draw(Graphics g) {
@@ -133,8 +126,10 @@ public class VisualObject {
         return false;
     }
 
-    // Meant to be overridden by child classes, but ALWAYS CALL DRAW() !!!!
-    public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+    public void update(int tickCount) {
+    }
+
+    public void render(Graphics2D g, int tickCount) {
         this.draw(g);
     }
     public void setX(int x) {

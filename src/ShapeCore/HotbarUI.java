@@ -1,12 +1,9 @@
 package ShapeCore;
 
+import GameRun.AssetLoader;
+import Objects.PlayerEquipment.Consumable;
 import Objects.PlayerEquipment.Item;
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import javax.imageio.ImageIO;
 
 public class HotbarUI {
 
@@ -14,23 +11,9 @@ public class HotbarUI {
     private final int padding = 6;
     private final int totalWidth = 9 * (slotSize + padding) - padding;
 
-    private static final Map<String, Image> spriteCache = new HashMap<>();
-
     private Image getSprite(String path) {
         if (path == null) return null;
-        if (spriteCache.containsKey(path)) return spriteCache.get(path);
-
-        try {
-            File f = new File(path);
-            if (f.exists()) {
-                Image img = ImageIO.read(f);
-                spriteCache.put(path, img);
-                return img;
-            }
-        } catch (IOException e) {
-            // ignore
-        }
-        return null;
+        return AssetLoader.loadImage(path);
     }
 
     public void draw(Graphics g, Item[] hotbar, int activeIndex, int screenWidth, int screenHeight) {
@@ -89,6 +72,19 @@ public class HotbarUI {
                         g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
                         g2d.drawString(item.getName().substring(0, 1), slotX + slotSize / 2 - 4, slotY + slotSize / 2 + 5);
                     }
+                }
+                if (item instanceof Consumable && ((Consumable) item).getStackCount() > 1) {
+                    String count = String.valueOf(
+                            ((Consumable) item).getStackCount());
+                    g2d.setFont(new Font("SansSerif", Font.BOLD, 10));
+                    FontMetrics metrics = g2d.getFontMetrics();
+                    int badgeWidth = metrics.stringWidth(count) + 8;
+                    int badgeX = slotX + slotSize - badgeWidth - 2;
+                    int badgeY = slotY + slotSize - 15;
+                    g2d.setColor(new Color(15, 17, 24, 220));
+                    g2d.fillRoundRect(badgeX, badgeY, badgeWidth, 13, 6, 6);
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString(count, badgeX + 4, badgeY + 10);
                 }
             }
 

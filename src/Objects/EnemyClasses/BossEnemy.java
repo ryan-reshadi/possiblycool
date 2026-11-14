@@ -26,7 +26,7 @@ public class BossEnemy extends Enemy {
                 moveWithWallCollision(
                         (int) Math.round((this.targetPlayer.getX() - this.x) * ratio),
                         (int) Math.round((this.targetPlayer.getY() - this.y) * ratio));
-            } else {
+            } else if (hasLineOfSightTo(this.targetPlayer)) {
                 if (lastAttackTick == -1 || currentTick >= lastAttackTick + attackCooldown) {
                     this.targetPlayer.hurt(this.damage);
                     lastAttackTick = currentTick;

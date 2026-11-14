@@ -18,13 +18,18 @@ public class BerserkerWeapon extends EnemyWeapon {
         if (owner.dashTicks > 0) {
             double nx = Math.cos(owner.dashAngle), ny = Math.sin(owner.dashAngle);
             owner.moveWithWallCollision((int)Math.round(nx*owner.dashSpeed), (int)Math.round(ny*owner.dashSpeed));
-            if (!hitThisDash && target.getHitbox().intersects(owner.getHitbox())) { target.hurt(damage); hitThisDash=true; }
+            if (!hitThisDash && owner.hasLineOfSightTo(target)
+                    && target.getHitbox().intersects(owner.getHitbox())) { target.hurt(damage); hitThisDash=true; }
             owner.dashTicks--;
             if (owner.dashTicks == 0) owner.dashTellTicks = 0;
         } else if (owner.dashTellTicks > 0) {
+            if (!owner.hasLineOfSightTo(target)) {
+                owner.dashTellTicks = 0;
+                return;
+            }
             owner.dashTellTicks--;
             if(owner.dashTellTicks==0){owner.dashTicks=24;owner.dashSpeed=range/24.0;hitThisDash=false;lastAttack=tick;}
-        } else if (ready(tick)) {
+        } else if (ready(tick) && owner.hasLineOfSightTo(target)) {
             owner.tellAngle = Math.atan2(target.getY()-owner.y, target.getX()-owner.x);
             owner.dashAngle=owner.tellAngle; owner.tellLength=(int)range; owner.dashTellTicks=36;
         }

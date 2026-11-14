@@ -1,5 +1,6 @@
 package ShapeCore;
 
+import GameRun.AssetLoader;
 import Objects.PlayerClasses.Player;
 import Objects.PlayerEquipment.*;
 import Objects.PlayerEquipment.Armor.ArmorSlot;
@@ -7,11 +8,8 @@ import Objects.PlayerEquipment.Weapons.Hammer;
 import Objects.PlayerEquipment.Weapons.Wand;
 
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.List;
-import javax.imageio.ImageIO;
 
 public class InventoryPanel {
 
@@ -33,8 +31,6 @@ public class InventoryPanel {
     private int dragStartX;
     private int dragStartY;
 
-    private static final Map<String, Image> spriteCache = new HashMap<>();
-
     public InventoryPanel() {
     }
 
@@ -47,7 +43,18 @@ public class InventoryPanel {
     }
 
     public void addItem(Item item) {
-        if (item != null) storage.add(item);
+        if (item == null) return;
+        if (item instanceof Consumable) {
+            Consumable incoming = (Consumable) item;
+            if (incoming.isUsed()) return;
+            for (Item stored : storage) {
+                if (stored instanceof Consumable) {
+                    ((Consumable) stored).mergeFrom(incoming);
+                    if (incoming.isUsed()) return;
+                }
+            }
+        }
+        storage.add(item);
     }
 
     public void addAbility(Ability ability) {
@@ -56,19 +63,7 @@ public class InventoryPanel {
 
     private Image getSprite(String path) {
         if (path == null) return null;
-        if (spriteCache.containsKey(path)) return spriteCache.get(path);
-
-        try {
-            File f = new File(path);
-            if (f.exists()) {
-                Image img = ImageIO.read(f);
-                spriteCache.put(path, img);
-                return img;
-            }
-        } catch (IOException e) {
-            // ignore
-        }
-        return null;
+        return AssetLoader.loadImage(path);
     }
 
     public void draw(Graphics g, Player player, int mouseX, int mouseY, int screenWidth, int screenHeight) {
@@ -209,7 +204,7 @@ public class InventoryPanel {
         int px = (sw - 840) / 2, py = (sh - 560) / 2;
         int leftX = px + 24, leftY = py + 75;
         for (int i = 0; i < 9; i++) {
-            int sx = leftX + (i % 5) * 50, sy = leftY + 264 + (i / 5) * 52;
+            int sx = leftX + (i % 5) * 50, sy = leftY + 284 + (i / 5) * 52;
             if (x >= sx && x <= sx + 44 && y >= sy && y <= sy + 44) return i;
         }
         return -1;
@@ -230,7 +225,7 @@ public class InventoryPanel {
     private boolean isAbilitySlot(int x, int y, int sw, int sh) { return abilitySlotAt(x, y, sw, sh) >= 0; }
     private int abilitySlotAt(int x, int y, int sw, int sh) {
         int px = (sw - 840) / 2, py = (sh - 560) / 2;
-        int leftX = px + 24, top = py + 167;
+        int leftX = px + 24, top = py + 187;
         for (int i = 0; i < 3; i++) {
             int sx = leftX + i * 58;
             if (x >= sx && x <= sx + 50 && y >= top && y <= top + 50) return i;
@@ -247,17 +242,25 @@ public class InventoryPanel {
         if (player.getBodyArmor() == object) player.equipBody(null);
     }
     private void addObjectToStorage(Object object) {
-        if (object instanceof Item) storage.add((Item) object);
+        if (object instanceof Item) addItem((Item) object);
         else if (object instanceof Ability) abilityStorage.add((Ability) object);
     }
     private void moveToHotbar(Item item, int index, Player player) {
         Item[] items = player.getInventory();
         Item displaced = items[index];
+        if (item == displaced) return;
+        if (item instanceof Consumable && displaced instanceof Consumable
+                && ((Consumable) item).canStackWith((Consumable) displaced)) {
+            removeFromInventory(item, player);
+            ((Consumable) displaced).mergeFrom((Consumable) item);
+            if (!((Consumable) item).isUsed()) addItem(item);
+            return;
+        }
         removeFromInventory(item, player);
         items[index] = item;
         if (displaced != null && displaced != item) addObjectToStorage(displaced);
     }
-    private void moveToStorage(Item item, Player player) { removeFromInventory(item, player); storage.add(item); }
+    private void moveToStorage(Item item, Player player) { removeFromInventory(item, player); addItem(item); }
     private void moveToAbilityStorage(Ability ability, Player player) { removeFromInventory(ability, player); abilityStorage.add(ability); }
 
     private void drawEquippedGear(Graphics2D g2d, Player player, int x, int y) {
@@ -275,45 +278,68 @@ public class InventoryPanel {
         drawSlot(g2d, x + 65, y + 8, 50, 50, "BODY", body != null ? body.getIconColor() : null,
                 body != null ? body.getName() : null, body != null ? body.getSpritePath() : null);
 
+        ArmorSet displayedSet = head != null && head.getArmorSet() != null
+                ? head.getArmorSet() : body == null ? null : body.getArmorSet();
+        int setPieces = displayedSet == null ? 0 : player.getArmorSetPieceCount(displayedSet);
+        ArmorSet activeSet = player.getActiveArmorSet();
+        boolean mixedSets = head != null && body != null
+                && head.getArmorSet() != null && body.getArmorSet() != null
+                && head.getArmorSet() != body.getArmorSet();
+        String setStatus;
+        if (activeSet != null) {
+            setStatus = "SET BONUS: " + activeSet.getDisplayName() + " active - " + activeSet.getBonusDescription();
+        } else if (mixedSets) {
+            setStatus = "SET BONUS: Equip matching armor pieces";
+        } else if (displayedSet != null) {
+            setStatus = "SET: " + displayedSet.getDisplayName() + " " + setPieces + "/"
+                    + ArmorSet.REQUIRED_PIECES + " - " + displayedSet.getBonusDescription();
+        } else {
+            setStatus = "SET BONUS: Match 2 pieces to activate";
+        }
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g2d.setColor(activeSet != null ? new Color(140, 220, 150) : new Color(175, 180, 200));
+        g2d.drawString(setStatus, x, y + 76);
+
         // Abilities
         g2d.setColor(new Color(255, 215, 0));
-        g2d.drawString("ACTIVE ABILITIES (Q / E / F)", x, y + 84);
+        g2d.drawString("ACTIVE ABILITIES (Q / E / F)", x, y + 104);
 
         String[] abKeys = {"Q", "E", "F"};
         Ability[] abs = player.getAbilitySlots();
         for (int i = 0; i < 3; i++) {
             Ability a = (abs != null && i < abs.length) ? abs[i] : null;
-            drawSlot(g2d, x + i * 58, y + 92, 50, 50, abKeys[i],
+            drawSlot(g2d, x + i * 58, y + 112, 50, 50, abKeys[i],
                     a != null ? a.getIconColor() : null,
                     a != null ? a.getName() : null, a != null ? a.getSpritePath() : null);
         }
 
         // Passives
         g2d.setColor(new Color(255, 215, 0));
-        g2d.drawString("PASSIVES", x, y + 168);
+        g2d.drawString("PASSIVES", x, y + 188);
 
         Ability[] passives = player.getPassiveSlots();
         for (int i = 0; i < 2; i++) {
             Ability p = (passives != null && i < passives.length) ? passives[i] : null;
-            drawSlot(g2d, x + i * 58, y + 176, 50, 50, "P" + (i + 1),
+            drawSlot(g2d, x + i * 58, y + 196, 50, 50, "P" + (i + 1),
                     p != null ? p.getIconColor() : null,
                     p != null ? p.getName() : null, p != null ? p.getSpritePath() : null);
         }
 
         // Hotbar
         g2d.setColor(new Color(255, 215, 0));
-        g2d.drawString("HOTBAR SLOTS (1 - 9)", x, y + 252);
+        g2d.drawString("HOTBAR SLOTS (1 - 9)", x, y + 272);
 
         Item[] inv = player.getInventory();
         for (int i = 0; i < 9; i++) {
             int row = i / 5;
             int col = i % 5;
             int sx = x + col * 50;
-            int sy = y + 264 + row * 52;
+            int sy = y + 284 + row * 52;
             Item it = (inv != null && i < inv.length) ? inv[i] : null;
             drawSlot(g2d, sx, sy, 44, 44, String.valueOf(i + 1),
                     it != null ? it.getIconColor() : null,
                     it != null ? it.getName() : null, it != null ? it.getSpritePath() : null);
+            drawStackCount(g2d, it, sx, sy, 44, 44);
         }
     }
 
@@ -366,6 +392,7 @@ public class InventoryPanel {
                 }
 
                 drawSlot(g2d, sx, sy, slotW, slotH, null, col, label, spritePath);
+                drawStackCount(g2d, obj instanceof Item ? (Item) obj : null, sx, sy, slotW, slotH);
             }
         }
     }
@@ -423,6 +450,20 @@ public class InventoryPanel {
         }
     }
 
+    private void drawStackCount(Graphics2D g2d, Item item, int x, int y, int w, int h) {
+        if (!(item instanceof Consumable) || ((Consumable) item).getStackCount() <= 1) return;
+        String count = String.valueOf(((Consumable) item).getStackCount());
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 10));
+        FontMetrics metrics = g2d.getFontMetrics();
+        int badgeWidth = metrics.stringWidth(count) + 8;
+        int badgeX = x + w - badgeWidth - 2;
+        int badgeY = y + h - 15;
+        g2d.setColor(new Color(15, 17, 24, 220));
+        g2d.fillRoundRect(badgeX, badgeY, badgeWidth, 13, 6, 6);
+        g2d.setColor(Color.WHITE);
+        g2d.drawString(count, badgeX + 4, badgeY + 10);
+    }
+
     // ── TOOLTIP RENDERING ───────────────────────────────────────────────────
 
     private void drawTooltip(Graphics2D g2d, Player player, int mouseX, int mouseY, int px, int py, int screenWidth, int screenHeight) {
@@ -474,7 +515,7 @@ public class InventoryPanel {
             Ability[] abs = player.getAbilitySlots();
             for (int i = 0; i < 3; i++) {
                 int ax = leftX + i * 58;
-                int ay = leftY + 92;
+                int ay = leftY + 112;
                 if (mouseX >= ax && mouseX <= ax + 50 && mouseY >= ay && mouseY <= ay + 50) {
                     if (abs != null && i < abs.length && abs[i] != null) {
                         hoveredObj = abs[i];
@@ -489,7 +530,7 @@ public class InventoryPanel {
             Ability[] passives = player.getPassiveSlots();
             for (int i = 0; i < 2; i++) {
                 int pxSlot = leftX + i * 58;
-                int pySlot = leftY + 176;
+                int pySlot = leftY + 196;
                 if (mouseX >= pxSlot && mouseX <= pxSlot + 50 && mouseY >= pySlot && mouseY <= pySlot + 50) {
                     if (passives != null && i < passives.length && passives[i] != null) {
                         hoveredObj = passives[i];
@@ -506,7 +547,7 @@ public class InventoryPanel {
                 int row = i / 5;
                 int col = i % 5;
                 int sx = leftX + col * 50;
-                int sy = leftY + 264 + row * 52;
+                int sy = leftY + 284 + row * 52;
                 if (mouseX >= sx && mouseX <= sx + 44 && mouseY >= sy && mouseY <= sy + 44) {
                     if (inv != null && i < inv.length && inv[i] != null) {
                         hoveredObj = inv[i];
@@ -522,10 +563,11 @@ public class InventoryPanel {
         if (hoveredObj == null) return;
 
         // Render Tooltip Card
-        renderTooltipCard(g2d, hoveredObj, actionHint, mouseX, mouseY, screenWidth, screenHeight);
+        renderTooltipCard(g2d, player, hoveredObj, actionHint, mouseX, mouseY, screenWidth, screenHeight);
     }
 
-    private void renderTooltipCard(Graphics2D g2d, Object obj, String actionHint, int mouseX, int mouseY, int screenWidth, int screenHeight) {
+    private void renderTooltipCard(Graphics2D g2d, Player player, Object obj, String actionHint,
+                                   int mouseX, int mouseY, int screenWidth, int screenHeight) {
         String title = "Item";
         String badge = "";
         String desc = "";
@@ -536,11 +578,20 @@ public class InventoryPanel {
             title = a.getName();
             badge = "ARMOR [" + a.getSlot() + "]  •  " + (int) Math.round(a.getArmorReduction() * 100) + "% DAMAGE REDUCTION";
             desc = a.getDescription();
+            ArmorSet armorSet = a.getArmorSet();
+            if (armorSet != null) {
+                int pieces = player.getArmorSetPieceCount(armorSet);
+                boolean active = pieces >= ArmorSet.REQUIRED_PIECES;
+                desc += " Set: " + armorSet.getDisplayName() + " Armor. Bonus ("
+                        + ArmorSet.REQUIRED_PIECES + " pieces): " + armorSet.getBonusDescription()
+                        + ". Equipped: " + pieces + "/" + ArmorSet.REQUIRED_PIECES
+                        + (active ? " - active." : " - incomplete.");
+            }
             glowColor = new Color(100, 160, 255);
         } else if (obj instanceof Wand) {
             Wand w = (Wand) obj;
             title = w.getName();
-            badge = "LEVEL " + w.getLevel() + "  •  " + w.getDamage() + " DAMAGE";
+            badge = "LEVEL " + w.getLevel() + "  •  " + w.getDamage(player) + " DAMAGE";
             desc = w.getDescription() + " | Fire rate: "
                     + String.format("%.2f attacks/s", w.getAttacksPerSecond())
                     + " | Range: " + w.getEffectiveRange() + " px";
@@ -556,7 +607,9 @@ public class InventoryPanel {
         } else if (obj instanceof Consumable) {
             Consumable c = (Consumable) obj;
             title = c.getName();
-            badge = "CONSUMABLE  •  " + c.getUsesRemaining() + " USE REMAINING";
+            badge = "CONSUMABLE  •  " + c.getUsesRemaining()
+                    + (c.getUsesRemaining() == 1 ? " USE LEFT  •  " : " USES LEFT  •  ")
+                    + c.getStackCount() + " ITEMS";
             desc = c.getDescription();
             glowColor = new Color(255, 75, 75);
         } else if (obj instanceof Ability) {
@@ -717,10 +770,10 @@ public class InventoryPanel {
                             }
                         } else if (obj instanceof Consumable) {
                             Consumable con = (Consumable) obj;
-                            // If right-click or left-click with full hotbar, consume it
+                            int previousCount = con.getStackCount();
                             if (player.addToHotbar(con)) {
                                 storage.remove(con);
-                            } else {
+                            } else if (con.getStackCount() == previousCount) {
                                 con.use(player, currentTick);
                                 if (con.isUsed()) storage.remove(con);
                             }
@@ -768,7 +821,7 @@ public class InventoryPanel {
             int row = i / 5;
             int col = i % 5;
             int sx = leftX + col * 50;
-            int sy = leftY + 264 + row * 52;
+            int sy = leftY + 284 + row * 52;
             if (clickX >= sx && clickX <= sx + 44 && clickY >= sy && clickY <= sy + 44) {
                 if (inv[i] != null) {
                     if (isRightClick && inv[i] instanceof Consumable) {

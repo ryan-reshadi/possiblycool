@@ -1,117 +1,133 @@
 package GameRun;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.HashSet;
-import java.util.Set;
-import javax.swing.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 public class App extends JPanel {
-
-    private int clickXDown = -1;
-    private int clickYDown = -1;
-    private int clickXUp = -1;
-    private int clickYUp = -1;
-    private int mouseX = 0;
-    private int mouseY = 0;
-    private boolean isRightClick = false;
-    private int scrollDelta = 0;
-    private final Set<Integer> pressedKeys = new HashSet<>();
-    private final Game game;
+    private final InputState inputState = new InputState();
+    private final FixedStepClock fixedStepClock = new FixedStepClock();
+    private final Game game = new Game();
+    private long lastUpdateNanos = System.nanoTime();
 
     public App() {
+        setPreferredSize(new Dimension(Viewport.WIDTH, Viewport.HEIGHT));
         setFocusable(true);
-        this.game = new Game();
+        setFocusTraversalKeysEnabled(false);
 
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                clickXDown = e.getX();
-                clickYDown = e.getY();
-                mouseX = e.getX();
-                mouseY = e.getY();
-                isRightClick = SwingUtilities.isRightMouseButton(e);
+                inputState.mousePressed(toLogicalX(e.getX()), toLogicalY(e.getY()),
+                        SwingUtilities.isRightMouseButton(e));
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                clickXUp = e.getX();
-                clickYUp = e.getY();
-                mouseX = e.getX();
-                mouseY = e.getY();
+                inputState.mouseReleased(toLogicalX(e.getX()), toLogicalY(e.getY()));
             }
         });
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                mouseX = e.getX();
-                mouseY = e.getY();
+                inputState.mouseMoved(toLogicalX(e.getX()), toLogicalY(e.getY()));
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
-                mouseX = e.getX();
-                mouseY = e.getY();
+                inputState.mouseMoved(toLogicalX(e.getX()), toLogicalY(e.getY()));
             }
         });
 
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                pressedKeys.add(e.getKeyCode());
+                inputState.keyPressed(e.getKeyCode());
             }
 
             @Override
             public void keyReleased(KeyEvent e) {
-                pressedKeys.remove(e.getKeyCode());
+                inputState.keyReleased(e.getKeyCode());
             }
         });
 
-        addMouseWheelListener(new MouseAdapter() {
+        addMouseWheelListener((MouseWheelEvent e) -> inputState.mouseWheelMoved(e.getWheelRotation()));
+        addFocusListener(new FocusAdapter() {
             @Override
-            public void mouseWheelMoved(MouseWheelEvent e) {
-                scrollDelta = e.getWheelRotation();
+            public void focusLost(FocusEvent e) {
+                inputState.clear();
             }
         });
 
-        Timer timer = new Timer(17, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                repaint();
-            }
-        });
+        Timer timer = new Timer(8, e -> advanceSimulation());
         timer.start();
+    }
+
+    private int toLogicalX(int x) {
+        return Viewport.toLogicalX(x, getWidth(), getHeight());
+    }
+
+    private int toLogicalY(int y) {
+        return Viewport.toLogicalY(y, getWidth(), getHeight());
+    }
+
+    private void advanceSimulation() {
+        long now = System.nanoTime();
+        long elapsed = Math.max(0, now - lastUpdateNanos);
+        lastUpdateNanos = now;
+        int steps = fixedStepClock.advance(elapsed);
+        if (steps > 0) {
+            InputFrame frame = inputState.snapshot();
+            for (int step = 0; step < steps; step++) {
+                game.update(frame);
+                frame = frame.withoutEdges();
+            }
+        }
+        repaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-
-        // Update mouse position and right click on game
-        this.game.setMousePosition(this.mouseX, this.mouseY);
-        this.game.setRightClick(this.isRightClick);
-
-        // Single screen update call per frame
-        this.game.screenUpdate(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp, this.scrollDelta);
-
-        // Reset click flags after the frame has consumed them
-        this.clickXDown = -1;
-        this.clickYDown = -1;
-        this.clickXUp = -1;
-        this.clickYUp = -1;
-        this.isRightClick = false;
-        this.scrollDelta = 0;
+        Graphics2D g2d = (Graphics2D) g.create();
+        try {
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+            double scale = Viewport.scaleFor(getWidth(), getHeight());
+            g2d.translate(Viewport.offsetXFor(getWidth(), getHeight()),
+                    Viewport.offsetYFor(getWidth(), getHeight()));
+            g2d.scale(scale, scale);
+            game.render(g2d);
+        } finally {
+            g2d.dispose();
+        }
     }
 
     public static void main(String[] args) {
-        JFrame frame = new JFrame("possiblycool — Dungeon Crawler");
-        App panel = new App();
-
-        frame.add(panel);
-        frame.setSize(1900, 1000);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("possiblycool - Dungeon Crawler");
+            App panel = new App();
+            frame.setContentPane(panel);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setMinimumSize(new Dimension(800, 600));
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+            panel.requestFocusInWindow();
+        });
     }
 }

@@ -11,7 +11,7 @@ public class WizardPlayer extends Player {
         this.rollSpeed = 1.0;
         this.maxRolls = 1;
         this.rolls = 1;
-        this.totalArmorReduction = 0.10; // 10% innate protection
+        this.setInnateArmorReduction(0.10);
         this.setImgPath("images/rus.jpg");
         giveStartingLoadout();
     }

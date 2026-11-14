@@ -26,7 +26,7 @@ public class MeleeEnemy extends Enemy {
             double distance = getDistanceToPlayer();
             if (distance > this.attackRange) {
                 moveTowardsPlayer(distance, currentTick);
-            } else {
+            } else if (hasLineOfSightTo(this.targetPlayer)) {
                 if (lastAttackTick == -1 || currentTick >= lastAttackTick + attackCooldown) {
                     this.targetPlayer.hurt(this.damage);
                     lastAttackTick = currentTick;

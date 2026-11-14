@@ -11,7 +11,7 @@ public class TankPlayer extends Player {
         this.rollSpeed = 0.5;
         this.maxRolls = 1;
         this.rolls = 1;
-        this.totalArmorReduction = 0.25; // 25% innate armor
+        this.setInnateArmorReduction(0.25);
         this.setImgPath("images/rus.jpg");
         giveStartingLoadout();
     }

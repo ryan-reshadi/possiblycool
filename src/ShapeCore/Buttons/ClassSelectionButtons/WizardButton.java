@@ -1,7 +1,6 @@
 package ShapeCore.Buttons.ClassSelectionButtons;
 
 import GameRun.Game;
-import GameRun.GameStates;
 import ShapeCore.Buttons.Button;
 import java.awt.Color;
 
@@ -13,6 +12,6 @@ public class WizardButton extends Button {
     @Override
     public void buttonAction() {
         this.game.player = new Objects.PlayerClasses.WizardPlayer(400, 300);
-        this.game.changeState(GameStates.LEVEL_1);
+        this.game.startSelectedLevel();
     }
 }

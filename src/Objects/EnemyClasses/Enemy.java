@@ -3,11 +3,12 @@ package Objects.EnemyClasses;
 import Objects.PlayerClasses.Player;
 import Objects.Entity;
 import Objects.PlayerEquipment.Item;
+import Objects.ProjectileCollision;
 import Objects.Terrain.Border;
 import Objects.Terrain.BossDoor;
 import Objects.VisualObject;
 import java.awt.Color;
-import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 import java.util.Random;
 import java.util.List;
@@ -82,6 +83,15 @@ public class Enemy extends Entity {
     }
     public void setProjectileSink(java.util.function.Consumer<VisualObject> sink) { projectileSink = sink; }
     public void setWeapon(EnemyWeapon weapon) { this.weapon = weapon; }
+
+    boolean hasLineOfSightTo(Player target) {
+        if (target == null) return false;
+        return !ProjectileCollision.hitsWall(
+                this.x + this.width / 2.0, this.y + this.height / 2.0,
+                target.getX() + target.getWidth() / 2.0,
+                target.getY() + target.getHeight() / 2.0,
+                0, 0, this.borders);
+    }
 
     /** Move along each axis only when the enemy's hitbox remains clear of walls. */
     protected void moveWithWallCollision(int dx, int dy) {
@@ -232,17 +242,10 @@ public class Enemy extends Entity {
     }
 
     @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+    public void update(int tickCount) {
         this.currentTick = tickCount;
         if (isDead()) {
-            if (!deathHandled) {
-                deathHandled = true;
-                this.visible = false;
-                if (onDeath != null) {
-                    onDeath.run();
-                }
-            }
+            handleDeath();
             return;
         }
 
@@ -251,6 +254,10 @@ public class Enemy extends Entity {
         }
 
         processStatusEffects(tickCount);
+        if (isDead()) {
+            handleDeath();
+            return;
+        }
 
         if (applyKnockback()) {
             // Movement is the hit reaction; skip AI for this tick.
@@ -262,20 +269,32 @@ public class Enemy extends Entity {
             }
         }
 
+    }
+
+    private void handleDeath() {
+        if (deathHandled) return;
+        deathHandled = true;
+        this.visible = false;
+        if (onDeath != null) onDeath.run();
+    }
+
+    @Override
+    public void render(Graphics2D g, int tickCount) {
+        if (isDead() || !visible) return;
         if (weapon instanceof BerserkerWeapon) drawDashTell(g);
         draw(g);
-        if (weapon != null && targetPlayer != null) weapon.aim(this, targetPlayer, (java.awt.Graphics2D) g);
+        if (weapon != null && targetPlayer != null) weapon.aim(this, targetPlayer, g);
         drawHealthBar(g);
     }
 
-    protected void drawDashTell(Graphics g) {
+    protected void drawDashTell(Graphics2D g) {
         if (dashTellTicks <= 0) return;
         g.setColor(dashTicks > 0 ? Color.RED : Color.WHITE);
         int cx = x + width / 2, cy = y + height / 2;
         g.drawLine(cx, cy, cx + (int)(Math.cos(tellAngle)*tellLength), cy + (int)(Math.sin(tellAngle)*tellLength));
     }
 
-    protected void drawHealthBar(Graphics g) {
+    protected void drawHealthBar(Graphics2D g) {
         if (this.health < this.maxHealth && this.health > 0) {
             int barWidth = this.width;
             int barHeight = 4;

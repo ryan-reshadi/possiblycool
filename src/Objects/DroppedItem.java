@@ -1,15 +1,10 @@
 package Objects;
 
+import GameRun.AssetLoader;
 import Objects.PlayerClasses.Player;
 import Objects.PlayerEquipment.Item;
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
-import javax.imageio.ImageIO;
 
 public class DroppedItem extends VisualObject {
 
@@ -17,8 +12,6 @@ public class DroppedItem extends VisualObject {
     private final Consumer<Item> onPickup;
     private boolean pickedUp = false;
     private Image sprite = null;
-
-    private static final Map<String, Image> imageCache = new HashMap<>();
 
     public DroppedItem(int x, int y, Item item, Consumer<Item> onPickup) {
         super(x, y, 32, 32, item != null ? item.getIconColor() : Color.YELLOW);
@@ -31,21 +24,7 @@ public class DroppedItem extends VisualObject {
     }
 
     private void loadSprite(String path) {
-        if (imageCache.containsKey(path)) {
-            this.sprite = imageCache.get(path);
-            return;
-        }
-
-        try {
-            File f = new File(path);
-            if (f.exists()) {
-                Image img = ImageIO.read(f);
-                imageCache.put(path, img);
-                this.sprite = img;
-            }
-        } catch (IOException e) {
-            System.err.println("Failed to load drop sprite: " + path);
-        }
+        this.sprite = AssetLoader.loadImage(path);
     }
 
     public Item getItem() {
@@ -76,8 +55,7 @@ public class DroppedItem extends VisualObject {
     }
 
     @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+    public void render(Graphics2D g, int tickCount) {
         if (pickedUp || !visible) return;
         draw(g, tickCount);
     }

@@ -116,6 +116,8 @@ public class AnimationTimingTest {
         
         if (pass) {
             System.out.println("PASS: All timing checks passed!");
+        } else {
+            throw new AssertionError("Animation timing checks failed.");
         }
     }
     

@@ -21,11 +21,17 @@ public class Armor extends Item {
 
     private final double armorReduction; // 0.0 – 1.0, capped by slot
     private final ArmorSlot slot;
+    private final ArmorSet armorSet;
 
     public Armor(String name, String description, double armorReduction, ArmorSlot slot) {
+        this(name, description, armorReduction, slot, null);
+    }
+
+    public Armor(String name, String description, double armorReduction, ArmorSlot slot, ArmorSet armorSet) {
         this.name = name;
         this.description = description;
         this.slot = slot;
+        this.armorSet = armorSet;
         this.iconColor = (slot == ArmorSlot.HEAD) ? new Color(100, 149, 237) : new Color(65, 105, 225);
         this.spritePath = (slot == ArmorSlot.HEAD) ? "images/drops/helmet.png" : "images/drops/chestplate.png";
 
@@ -39,6 +45,10 @@ public class Armor extends Item {
 
     public ArmorSlot getSlot() {
         return slot;
+    }
+
+    public ArmorSet getArmorSet() {
+        return armorSet;
     }
 
     @Override

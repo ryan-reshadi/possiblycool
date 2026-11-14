@@ -8,13 +8,13 @@ public class MageBall extends VisualObject{
     private int speed;
     private double falloff= 0;
     public MageBall(double angle, int speed, double falloff, int x, int y){
-        super(x, y, "wizardball.png");
+        super(x, y, "images/wizard-ball.png");
         this.angle = angle;
         this.speed = speed;
         this.falloff = falloff;
     }
     public MageBall(double angle, int speed, int x, int y){
-        super(x, y, "wizardball.png");
+        super(x, y, "images/wizard-ball.png");
         this.angle = angle;
         this.speed = speed;
     }

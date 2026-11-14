@@ -1,17 +1,18 @@
 package Objects.PlayerClasses;
 
+import GameRun.InputFrame;
 import Objects.Entity;
 import Objects.PlayerEquipment.Ability;
 import Objects.PlayerEquipment.Armor;
+import Objects.PlayerEquipment.ArmorSet;
+import Objects.PlayerEquipment.Consumable;
 import Objects.PlayerEquipment.Item;
 import Objects.PlayerEquipment.MeleeWeapon;
 import Objects.PlayerEquipment.Weapons.Wand;
-import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.*;
-import java.util.ArrayList;
 import java.util.Set;
 
 public class Player extends Entity {
@@ -19,6 +20,9 @@ public class Player extends Entity {
     // ── Gear slots ─────────────────────────────────────────────────────────
     public Armor headArmor = null;
     public Armor bodyArmor = null;
+    protected double innateArmorReduction;
+    private int armorSetSpeedBonus;
+    private double armorSetSpellDamageBonus;
 
     // ── Ability slots (Q=0, E=1, F=2) ─────────────────────────────────────
     public Ability[] abilitySlots = new Ability[3];
@@ -44,7 +48,6 @@ public class Player extends Entity {
     public int checkpointY = -1;
 
     // ── Inventory panel toggle key debounce ────────────────────────────────
-    private boolean inventoryKeyWasDown = false;
     public boolean inventoryOpen = false;
 
     public Player(int x, int y, int maxHealth) {
@@ -69,13 +72,66 @@ public class Player extends Entity {
     }
 
     public void recalcArmorReduction() {
-        double total = 0.0;
+        double total = innateArmorReduction;
         if (headArmor != null) total += headArmor.getArmorReduction();
         if (bodyArmor != null) total += bodyArmor.getArmorReduction();
+
+        ArmorSet activeSet = getActiveArmorSet();
+        int nextSpeedBonus = activeSet == null ? 0 : activeSet.getBonusMovementSpeed();
+        total += activeSet == null ? 0.0 : activeSet.getBonusArmorReduction();
+        this.speed = (int) Math.round(this.speed - armorSetSpeedBonus + nextSpeedBonus);
+        armorSetSpeedBonus = nextSpeedBonus;
+        armorSetSpellDamageBonus = activeSet == null ? 0.0 : activeSet.getBonusSpellDamage();
         setTotalArmorReduction(total);
     }
 
+    public void setInnateArmorReduction(double reduction) {
+        innateArmorReduction = Math.max(0.0, reduction);
+        recalcArmorReduction();
+    }
+
+    public int getArmorSetPieceCount(ArmorSet armorSet) {
+        if (armorSet == null) return 0;
+        int count = 0;
+        if (headArmor != null && headArmor.getArmorSet() == armorSet) count++;
+        if (bodyArmor != null && bodyArmor.getArmorSet() == armorSet) count++;
+        return count;
+    }
+
+    public ArmorSet getActiveArmorSet() {
+        ArmorSet headSet = headArmor == null ? null : headArmor.getArmorSet();
+        if (headSet != null && getArmorSetPieceCount(headSet) >= ArmorSet.REQUIRED_PIECES) {
+            return headSet;
+        }
+        ArmorSet bodySet = bodyArmor == null ? null : bodyArmor.getArmorSet();
+        if (bodySet != null && getArmorSetPieceCount(bodySet) >= ArmorSet.REQUIRED_PIECES) {
+            return bodySet;
+        }
+        return null;
+    }
+
+    public double getSpellDamageMultiplier() {
+        return 1.0 + armorSetSpellDamageBonus;
+    }
+
     public boolean addToHotbar(Item item) {
+        if (item == null) {
+            return false;
+        }
+        if (item instanceof Consumable) {
+            Consumable incoming = (Consumable) item;
+            if (incoming.isUsed()) {
+                return false;
+            }
+            for (Item existing : inventory) {
+                if (existing instanceof Consumable) {
+                    ((Consumable) existing).mergeFrom(incoming);
+                    if (incoming.isUsed()) {
+                        return true;
+                    }
+                }
+            }
+        }
         for (int i = 0; i < inventory.length; i++) {
             if (inventory[i] == null) {
                 inventory[i] = item;
@@ -119,10 +175,7 @@ public class Player extends Entity {
 
     // ── Per-tick logic ──────────────────────────────────────────────────────
 
-    public void checkAllTick(int currentTick, Set<Integer> pressedKeys,
-                             int clickXDown, int clickYDown,
-                             int clickXUp, int clickYUp,
-                             ArrayList<VisualObject> others) {
+    public void update(Set<Integer> pressedKeys, int currentTick) {
         checkRolls(currentTick);
         checkOverHeal(currentTick);
 
@@ -131,12 +184,14 @@ public class Player extends Entity {
             weapon.updateAttackAnimation();
         }
 
-        // Inventory toggle (I key = 73)
-        boolean iDown = pressedKeys.contains(73);
-        if (iDown && !inventoryKeyWasDown) {
+        this.hitbox.setRect(this.x, this.y, this.width, this.height);
+        if (this.health <= 0) this.dead = true;
+    }
+
+    public void handleInput(InputFrame input) {
+        if (input.wasPressed(73)) {
             inventoryOpen = !inventoryOpen;
         }
-        inventoryKeyWasDown = iDown;
     }
 
     // ── Overheal ────────────────────────────────────────────────────────────
@@ -178,8 +233,8 @@ public class Player extends Entity {
         if (MainHandIndex >= 0 && MainHandIndex < inventory.length && inventory[MainHandIndex] != null) {
             Item item = inventory[MainHandIndex];
             item.tick(currentTick, clickXDown, clickYDown, -1, -1, null, this);
-            if (item instanceof Objects.PlayerEquipment.Consumable) {
-                Objects.PlayerEquipment.Consumable c = (Objects.PlayerEquipment.Consumable) item;
+            if (item instanceof Consumable) {
+                Consumable c = (Consumable) item;
                 if (c.isUsed()) {
                     inventory[MainHandIndex] = null;
                 }
@@ -201,7 +256,7 @@ public class Player extends Entity {
 
     // ── Visual ──────────────────────────────────────────────────────────────
 
-    public void checkAttackEffects(Graphics g, int currentTick) {
+    public void renderAttackEffects(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
         MeleeWeapon weapon = getEquippedMeleeWeapon();
         if (weapon != null && weapon.getAttackBox() != null && weapon.isInAnimation()) {
@@ -217,27 +272,9 @@ public class Player extends Entity {
     // ── Main tick ───────────────────────────────────────────────────────────
 
     @Override
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown,
-                     int clickXUp, int clickYUp, int tickCount) {
-        this.draw(g);
-    }
-
-    public void tick(Graphics g, Set<Integer> pressedKeys,
-                     int clickXDown, int clickYDown,
-                     int clickXUp, int clickYUp, int tickCount,
-                     ArrayList<VisualObject> others) {
-        this.width = 50;
-        this.height = 50;
-        this.hitbox.setRect(this.x, this.y, this.width, this.height);
-
-        checkAllTick(tickCount, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, others);
-        checkAttackEffects(g, tickCount);
-        this.draw(g);
-
-        if (this.health <= 0 && !this.dead) {
-            this.dead = true;
-        }
+    public void render(Graphics2D g, int tickCount) {
+        renderAttackEffects(g);
+        draw(g);
     }
 
     // ── Checkpoint ──────────────────────────────────────────────────────────

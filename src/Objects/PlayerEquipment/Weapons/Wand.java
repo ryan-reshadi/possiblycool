@@ -83,6 +83,10 @@ public class Wand extends PlayerWeapon {
         return activeSpell == null ? 0 : getScaledDamage(activeSpell.getDamage());
     }
 
+    public int getDamage(Player owner) {
+        return (int) Math.round(getDamage() * (owner == null ? 1.0 : owner.getSpellDamageMultiplier()));
+    }
+
     public double getAttacksPerSecond() {
         return 60.0 / Math.max(1, firingCooldown);
     }
@@ -144,11 +148,16 @@ public class Wand extends PlayerWeapon {
     public void tick(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp,
                      ArrayList<VisualObject> targets, Player owner) {
         if ((clickXDown > -1 || clickYDown > -1) && isReady(currentTick) && owner != null && level != null) {
-            fire(clickXDown, clickYDown, currentTick, owner.getX() + owner.getWidth() / 2, owner.getY() + owner.getHeight() / 2);
+            fire(clickXDown, clickYDown, currentTick, owner.getX() + owner.getWidth() / 2,
+                    owner.getY() + owner.getHeight() / 2, owner);
         }
     }
 
     public void fire(int clickX, int clickY, int currentTick, int ownerCX, int ownerCY) {
+        fire(clickX, clickY, currentTick, ownerCX, ownerCY, null);
+    }
+
+    private void fire(int clickX, int clickY, int currentTick, int ownerCX, int ownerCY, Player owner) {
         if (!isReady(currentTick) || level == null || activeSpell == null) return;
         lastFiredTick = currentTick;
 
@@ -156,24 +165,25 @@ public class Wand extends PlayerWeapon {
 
         switch (attackPattern) {
             case SPREAD_3:
-                spawnBolt(ownerCX, ownerCY, baseAngle - 0.2);
-                spawnBolt(ownerCX, ownerCY, baseAngle);
-                spawnBolt(ownerCX, ownerCY, baseAngle + 0.2);
+                spawnBolt(ownerCX, ownerCY, baseAngle - 0.2, owner);
+                spawnBolt(ownerCX, ownerCY, baseAngle, owner);
+                spawnBolt(ownerCX, ownerCY, baseAngle + 0.2, owner);
                 break;
             case RAPID_BURST:
-                spawnBolt(ownerCX, ownerCY, baseAngle);
-                spawnBolt(ownerCX + (int)(Math.cos(baseAngle) * 8), ownerCY + (int)(Math.sin(baseAngle) * 8), baseAngle);
+                spawnBolt(ownerCX, ownerCY, baseAngle, owner);
+                spawnBolt(ownerCX + (int)(Math.cos(baseAngle) * 8),
+                        ownerCY + (int)(Math.sin(baseAngle) * 8), baseAngle, owner);
                 break;
             case SINGLE:
             default:
-                spawnBolt(ownerCX, ownerCY, baseAngle);
+                spawnBolt(ownerCX, ownerCY, baseAngle, owner);
                 break;
         }
     }
 
-    private void spawnBolt(int startX, int startY, double angle) {
+    private void spawnBolt(int startX, int startY, double angle, Player owner) {
         final Projectile[] projRef = new Projectile[1];
-        projRef[0] = activeSpell.createProjectile(startX, startY, angle, getDamage(), () -> {
+        projRef[0] = activeSpell.createProjectile(startX, startY, angle, getDamage(owner), () -> {
             if (level != null && projRef[0] != null) {
                 level.queueRemoveVisualObject(projRef[0]);
             }
