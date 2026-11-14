@@ -29,6 +29,9 @@ public class InventoryPanel {
     private final List<Item> storage = new ArrayList<>();
     private final List<Ability> abilityStorage = new ArrayList<>();
     private Tab currentTab = Tab.ALL;
+    private Object draggedObject;
+    private int dragStartX;
+    private int dragStartY;
 
     private static final Map<String, Image> spriteCache = new HashMap<>();
 
@@ -113,7 +116,149 @@ public class InventoryPanel {
 
         // ── TOOLTIP ───────────────────────────────────────────────────────────
         drawTooltip(g2d, player, mouseX, mouseY, px, py, screenWidth, screenHeight);
+        drawDraggedItem(g2d, mouseX, mouseY);
     }
+
+    private void drawDraggedItem(Graphics2D g2d, int mouseX, int mouseY) {
+        if (draggedObject == null) return;
+        String name;
+        String spritePath;
+        Color color;
+        if (draggedObject instanceof Item) {
+            Item item = (Item) draggedObject;
+            name = item.getName(); spritePath = item.getSpritePath(); color = item.getIconColor();
+        } else {
+            Ability ability = (Ability) draggedObject;
+            name = ability.getName(); spritePath = ability.getSpritePath(); color = ability.getIconColor();
+        }
+        int x = mouseX - 23, y = mouseY - 23;
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.82f));
+        drawSlot(g2d, x, y, 46, 46, null, color, name, spritePath);
+        g2d.setComposite(AlphaComposite.SrcOver);
+    }
+
+    /** Start a drag on press and commit it on release; plain clicks keep their existing actions. */
+    public void handlePointer(int downX, int downY, int upX, int upY, boolean rightClick,
+                              Player player, int screenWidth, int screenHeight, int currentTick) {
+        if (player == null || !player.isInventoryOpen()) return;
+        if (downX != -1 && downY != -1) {
+            if (rightClick) {
+                handleClick(downX, downY, true, player, screenWidth, screenHeight, currentTick);
+            } else {
+                dragStartX = downX;
+                dragStartY = downY;
+                draggedObject = objectAt(downX, downY, player, screenWidth, screenHeight);
+                if (draggedObject == null) {
+                    handleClick(downX, downY, false, player, screenWidth, screenHeight, currentTick);
+                }
+            }
+        }
+        if (upX != -1 && upY != -1 && draggedObject != null) {
+            Object source = draggedObject;
+            int target = hotbarIndexAt(upX, upY, screenWidth, screenHeight);
+            if (Math.hypot(upX - dragStartX, upY - dragStartY) < 8) {
+                handleClick(dragStartX, dragStartY, false, player, screenWidth, screenHeight, currentTick);
+            } else if (target >= 0 && source instanceof Item) {
+                moveToHotbar((Item) source, target, player);
+            } else if (isStoragePoint(upX, upY, screenWidth, screenHeight)) {
+                if (source instanceof Item) moveToStorage((Item) source, player);
+                else if (source instanceof Ability) moveToAbilityStorage((Ability) source, player);
+            } else if (isHeadSlot(upX, upY, screenWidth, screenHeight) && source instanceof Armor
+                    && ((Armor) source).getSlot() == ArmorSlot.HEAD) {
+                Armor old = player.getHeadArmor();
+                removeFromInventory(source, player);
+                player.equipHead((Armor) source);
+                if (old != null) addObjectToStorage(old);
+            } else if (isBodySlot(upX, upY, screenWidth, screenHeight) && source instanceof Armor
+                    && ((Armor) source).getSlot() == ArmorSlot.BODY) {
+                Armor old = player.getBodyArmor();
+                removeFromInventory(source, player);
+                player.equipBody((Armor) source);
+                if (old != null) addObjectToStorage(old);
+            } else if (isAbilitySlot(upX, upY, screenWidth, screenHeight) && source instanceof Ability) {
+                int slot = abilitySlotAt(upX, upY, screenWidth, screenHeight);
+                Ability[] slots = player.getAbilitySlots();
+                Ability old = slots[slot];
+                removeFromInventory(source, player);
+                slots[slot] = (Ability) source;
+                if (old != null) addObjectToStorage(old);
+            }
+            draggedObject = null;
+        }
+    }
+
+    private Object objectAt(int x, int y, Player player, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        int leftX = px + 24, leftY = py + 75;
+        int hotbar = hotbarIndexAt(x, y, sw, sh);
+        if (hotbar >= 0) return player.getInventory()[hotbar];
+        if (isHeadSlot(x, y, sw, sh)) return player.getHeadArmor();
+        if (isBodySlot(x, y, sw, sh)) return player.getBodyArmor();
+        if (isAbilitySlot(x, y, sw, sh)) return player.getAbilitySlots()[abilitySlotAt(x, y, sw, sh)];
+        int gx = px + 315, gy = py + 115, slotW = 54, pad = 8;
+        if (x >= gx && x < gx + 5 * (slotW + pad) && y >= gy && y < gy + 4 * (slotW + pad)) {
+            int col = (x - gx) / (slotW + pad), row = (y - gy) / (slotW + pad);
+            List<Object> filtered = getFilteredStorage();
+            int index = row * 5 + col;
+            return index < filtered.size() ? filtered.get(index) : null;
+        }
+        return null;
+    }
+
+    private int hotbarIndexAt(int x, int y, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        int leftX = px + 24, leftY = py + 75;
+        for (int i = 0; i < 9; i++) {
+            int sx = leftX + (i % 5) * 50, sy = leftY + 264 + (i / 5) * 52;
+            if (x >= sx && x <= sx + 44 && y >= sy && y <= sy + 44) return i;
+        }
+        return -1;
+    }
+
+    private boolean isStoragePoint(int x, int y, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        return x >= px + 315 && x < px + 315 + 5 * 62 && y >= py + 115 && y < py + 115 + 4 * 62;
+    }
+    private boolean isHeadSlot(int x, int y, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        return x >= px + 24 && x <= px + 74 && y >= py + 83 && y <= py + 133;
+    }
+    private boolean isBodySlot(int x, int y, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        return x >= px + 89 && x <= px + 139 && y >= py + 83 && y <= py + 133;
+    }
+    private boolean isAbilitySlot(int x, int y, int sw, int sh) { return abilitySlotAt(x, y, sw, sh) >= 0; }
+    private int abilitySlotAt(int x, int y, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        int leftX = px + 24, top = py + 167;
+        for (int i = 0; i < 3; i++) {
+            int sx = leftX + i * 58;
+            if (x >= sx && x <= sx + 50 && y >= top && y <= top + 50) return i;
+        }
+        return -1;
+    }
+    private void removeFromInventory(Object object, Player player) {
+        storage.remove(object); abilityStorage.remove(object);
+        Item[] items = player.getInventory();
+        for (int i = 0; i < items.length; i++) if (items[i] == object) items[i] = null;
+        Ability[] abilities = player.getAbilitySlots();
+        for (int i = 0; i < abilities.length; i++) if (abilities[i] == object) abilities[i] = null;
+        if (player.getHeadArmor() == object) player.equipHead(null);
+        if (player.getBodyArmor() == object) player.equipBody(null);
+    }
+    private void addObjectToStorage(Object object) {
+        if (object instanceof Item) storage.add((Item) object);
+        else if (object instanceof Ability) abilityStorage.add((Ability) object);
+    }
+    private void moveToHotbar(Item item, int index, Player player) {
+        Item[] items = player.getInventory();
+        Item displaced = items[index];
+        removeFromInventory(item, player);
+        items[index] = item;
+        if (displaced != null && displaced != item) addObjectToStorage(displaced);
+    }
+    private void moveToStorage(Item item, Player player) { removeFromInventory(item, player); storage.add(item); }
+    private void moveToAbilityStorage(Ability ability, Player player) { removeFromInventory(ability, player); abilityStorage.add(ability); }
 
     private void drawEquippedGear(Graphics2D g2d, Player player, int x, int y) {
         g2d.setFont(new Font("SansSerif", Font.BOLD, 12));

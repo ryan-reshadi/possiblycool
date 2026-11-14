@@ -71,7 +71,7 @@ public class App extends JPanel {
         addMouseWheelListener(new MouseAdapter() {
             @Override
             public void mouseWheelMoved(MouseWheelEvent e) {
-                scrollDelta = -e.getWheelRotation();
+                scrollDelta = e.getWheelRotation();
             }
         });
 

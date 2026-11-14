@@ -75,7 +75,7 @@ public class Level1 extends BaseLevel {
         Chest chest = new Chest(1250, 200, chestLoot, items -> {
             for (int i = 0; i < items.size(); i++) {
                 Item it = items.get(i);
-                queueAddVisualObject(new DroppedItem(1230 + (i * 30), 250, it, player::addToHotbar));
+            queueAddVisualObject(new DroppedItem(1230 + (i * 30), 250, it, this::collectItem));
             }
         });
         queueAddVisualObject(chest);
@@ -123,7 +123,7 @@ public class Level1 extends BaseLevel {
         BossEnemy boss = new BossEnemy(2350, 350);
         boss.setOnDeath(() -> {
             System.out.println("Boss defeated!");
-            queueAddVisualObject(new DroppedItem(2350, 350, new HealthPotion(), player::addToHotbar));
+            queueAddVisualObject(new DroppedItem(2350, 350, new HealthPotion(), this::collectItem));
         });
         addEnemy(boss);
     }
@@ -132,7 +132,7 @@ public class Level1 extends BaseLevel {
         MeleeEnemy e = new MeleeEnemy(x, y);
         e.setOnDeath(() -> {
             if (dropItem != null) {
-                queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), dropItem, player::addToHotbar));
+                queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), dropItem, this::collectItem));
             }
         });
         addEnemy(e);
@@ -143,7 +143,7 @@ public class Level1 extends BaseLevel {
         room2Guards.add(e);
         e.setOnDeath(() -> {
             room2Guards.remove(e);
-            queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), new HealthPotion(), player::addToHotbar));
+            queueAddVisualObject(new DroppedItem(e.getX(), e.getY(), new HealthPotion(), this::collectItem));
             if (room2Guards.isEmpty() && bossDoor != null && bossDoor.isLocked()) {
                 bossDoor.unlock();
             }

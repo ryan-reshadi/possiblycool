@@ -3,10 +3,14 @@ package Objects.EnemyClasses;
 import Objects.PlayerClasses.Player;
 import Objects.Entity;
 import Objects.PlayerEquipment.Item;
+import Objects.Terrain.Border;
+import Objects.Terrain.BossDoor;
+import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.geom.Rectangle2D;
 import java.util.Random;
+import java.util.List;
 import java.util.Set;
 
 public class Enemy extends Entity {
@@ -35,6 +39,7 @@ public class Enemy extends Entity {
     protected int knockbackTicksTotal;
     protected int interruptedUntilTick = -1;
     protected int currentTick;
+    protected List<? extends VisualObject> borders = java.util.Collections.emptyList();
 
     // Drop table callback
     protected Runnable onDeath = null;
@@ -64,6 +69,32 @@ public class Enemy extends Entity {
 
     public void setOnDeath(Runnable onDeath) {
         this.onDeath = onDeath;
+    }
+
+    public void setBorders(List<? extends VisualObject> borders) {
+        this.borders = borders != null ? borders : java.util.Collections.emptyList();
+    }
+
+    /** Move along each axis only when the enemy's hitbox remains clear of walls. */
+    protected void moveWithWallCollision(int dx, int dy) {
+        if (dx != 0 && !collidesWithWall(this.x + dx, this.y)) this.x += dx;
+        if (dy != 0 && !collidesWithWall(this.x, this.y + dy)) this.y += dy;
+        if (this.hitbox != null) this.hitbox.setRect(this.x, this.y, this.width, this.height);
+    }
+
+    private boolean collidesWithWall(int candidateX, int candidateY) {
+        for (VisualObject wall : borders) {
+            if (!(wall instanceof Border)) continue;
+            Border border = (Border) wall;
+            if (border instanceof BossDoor && !((BossDoor) border).isLocked()) continue;
+            if (candidateX < border.getX() + border.getWidth()
+                    && candidateX + this.width > border.getX()
+                    && candidateY < border.getY() + border.getHeight()
+                    && candidateY + this.height > border.getY()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void checkAggro(Player target) {
@@ -145,12 +176,9 @@ public class Enemy extends Entity {
     protected boolean applyKnockback() {
         if (knockbackTicksRemaining <= 0) return false;
         double progress = (double) knockbackTicksRemaining / knockbackTicksTotal;
-        this.x += (int) Math.round(knockbackX * progress);
-        this.y += (int) Math.round(knockbackY * progress);
+        moveWithWallCollision((int) Math.round(knockbackX * progress),
+                (int) Math.round(knockbackY * progress));
         knockbackTicksRemaining--;
-        if (this.hitbox != null) {
-            this.hitbox.setRect(this.x, this.y, this.width, this.height);
-        }
         return true;
     }
 
@@ -188,8 +216,7 @@ public class Enemy extends Entity {
             else if (dir == 4) wanderDx = 1;
         }
         double spd = getCurrentSpeed(currentTick);
-        this.x += (int) (wanderDx * spd);
-        this.y += (int) (wanderDy * spd);
+        moveWithWallCollision((int) (wanderDx * spd), (int) (wanderDy * spd));
     }
 
     public void aggroLogic(int currentTick) {

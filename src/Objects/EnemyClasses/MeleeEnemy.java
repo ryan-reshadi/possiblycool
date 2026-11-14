@@ -48,8 +48,9 @@ public class MeleeEnemy extends Enemy {
         if (distance <= 0) return;
         double spd = getCurrentSpeed(currentTick);
         double ratio = spd / distance;
-        this.x += (int) Math.round((this.targetPlayer.getX() - this.x) * ratio);
-        this.y += (int) Math.round((this.targetPlayer.getY() - this.y) * ratio);
+        moveWithWallCollision(
+                (int) Math.round((this.targetPlayer.getX() - this.x) * ratio),
+                (int) Math.round((this.targetPlayer.getY() - this.y) * ratio));
     }
 
     @Override

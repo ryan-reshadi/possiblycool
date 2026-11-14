@@ -115,7 +115,7 @@ public class Game {
 
         switch (this.state) {
             case INITIALIZED_1:
-                this.toAdd.add(new ShapeCore.Buttons.StartButton(850, 420, 200, 60, this));
+                this.toAdd.add(new ShapeCore.Buttons.StartButton(800, 410, 300, 80, this));
                 break;
 
             case GAME_STARTED_0:

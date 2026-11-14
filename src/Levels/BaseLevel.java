@@ -115,6 +115,10 @@ public class BaseLevel {
         }
     }
 
+    public void collectItem(Item item) {
+        this.inventoryPanel.addItem(item);
+    }
+
     public void processQueuedVisualObjectChanges() {
         for (VisualObject obj : removeList) {
             for (ArrayList<VisualObject> row : levelVisualObjects) {
@@ -152,9 +156,8 @@ public class BaseLevel {
 
             // If inventory is open, clicks interact with inventory panel instead of game world
             if (this.player.isInventoryOpen()) {
-                if (clickXDown != -1 && clickYDown != -1) {
-                    this.inventoryPanel.handleClick(clickXDown, clickYDown, this.isRightClick, this.player, 1900, 1000, tickCount);
-                }
+                this.inventoryPanel.handlePointer(clickXDown, clickYDown, clickXUp, clickYUp,
+                        this.isRightClick, this.player, 1900, 1000, tickCount);
             } else {
                 this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
                 this.mouseHandler(clickXDown, clickYDown, tickCount);
@@ -172,6 +175,7 @@ public class BaseLevel {
                         if (obj instanceof Player) {
                             ((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
                         } else if (obj instanceof Enemy) {
+                            ((Enemy) obj).setBorders(this.levelVisualObjects.get(1));
                             ((Enemy) obj).checkAggro(this.player);
                             obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
                         } else {
@@ -432,20 +436,31 @@ public class BaseLevel {
     protected void updateOffset() {
         if (this.player == null) return;
 
-        int speed = (int) this.player.getSpeed();
         int dx = 0;
         int dy = 0;
 
-        if (this.player.getX() < this.buffer) {
-            dx = speed;
-        } else if (this.player.getX() > 1900 - this.buffer) {
-            dx = -speed;
+        // Keep the player in a generous central dead zone. Once they leave it,
+        // ease the whole scene, including the player, so scrolling visibly carries
+        // them against the screen while their input movement is applied afterward.
+        int screenX = this.player.getX() + this.player.getWidth() / 2;
+        int screenY = this.player.getY() + this.player.getHeight() / 2;
+        int horizontalMargin = Math.max(160, this.buffer * 2);
+        int verticalMargin = Math.max(120, this.buffer * 2);
+        int left = horizontalMargin;
+        int right = 1900 - horizontalMargin;
+        int top = verticalMargin;
+        int bottom = 1000 - verticalMargin;
+
+        if (screenX < left) {
+            dx = Math.min(8, Math.max(1, (left - screenX) / 4));
+        } else if (screenX > right) {
+            dx = -Math.min(8, Math.max(1, (screenX - right) / 4));
         }
 
-        if (this.player.getY() < this.buffer) {
-            dy = speed;
-        } else if (this.player.getY() > 1000 - this.buffer) {
-            dy = -speed;
+        if (screenY < top) {
+            dy = Math.min(8, Math.max(1, (top - screenY) / 4));
+        } else if (screenY > bottom) {
+            dy = -Math.min(8, Math.max(1, (screenY - bottom) / 4));
         }
 
         if (dx != 0 || dy != 0) {
@@ -455,7 +470,7 @@ public class BaseLevel {
             this.bgY += dy;
             for (ArrayList<VisualObject> row : this.levelVisualObjects) {
                 for (VisualObject obj : row) {
-                    if (obj != null && obj != player && obj.moveable) {
+                    if (obj != null && obj.moveable) {
                         obj.move(dx, dy);
                     }
                 }

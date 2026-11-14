@@ -22,8 +22,9 @@ public class BossEnemy extends Enemy {
             if (distance > 60) {
                 double spd = getCurrentSpeed(currentTick);
                 double ratio = spd / distance;
-                this.x += (int) Math.round((this.targetPlayer.getX() - this.x) * ratio);
-                this.y += (int) Math.round((this.targetPlayer.getY() - this.y) * ratio);
+                moveWithWallCollision(
+                        (int) Math.round((this.targetPlayer.getX() - this.x) * ratio),
+                        (int) Math.round((this.targetPlayer.getY() - this.y) * ratio));
             } else {
                 if (lastAttackTick == -1 || currentTick >= lastAttackTick + attackCooldown) {
                     this.targetPlayer.hurt(this.damage);
