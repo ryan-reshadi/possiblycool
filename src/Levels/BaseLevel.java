@@ -44,6 +44,7 @@ public class BaseLevel {
 
     protected int mouseX = 0;
     protected int mouseY = 0;
+    protected boolean isRightClick = false;
 
     // Ability key debounces
     private boolean qWasDown = false;
@@ -84,6 +85,10 @@ public class BaseLevel {
     public void setMousePosition(int x, int y) {
         this.mouseX = x;
         this.mouseY = y;
+    }
+
+    public void setRightClick(boolean rightClick) {
+        this.isRightClick = rightClick;
     }
 
     public List<Enemy> getEnemies() {
@@ -148,7 +153,7 @@ public class BaseLevel {
             // If inventory is open, clicks interact with inventory panel instead of game world
             if (this.player.isInventoryOpen()) {
                 if (clickXDown != -1 && clickYDown != -1) {
-                    this.inventoryPanel.handleClick(clickXDown, clickYDown, this.player, 1900, 1000);
+                    this.inventoryPanel.handleClick(clickXDown, clickYDown, this.isRightClick, this.player, 1900, 1000, tickCount);
                 }
             } else {
                 this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);

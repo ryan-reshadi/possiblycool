@@ -22,6 +22,7 @@ public class Game {
 
     private int mouseX = 0;
     private int mouseY = 0;
+    private boolean isRightClick = false;
 
     public Game() {
         this.deathOverlay = new DeathOverlay(this);
@@ -36,6 +37,11 @@ public class Game {
         this.mouseY = y;
     }
 
+    public void setRightClick(boolean rightClick) {
+        this.isRightClick = rightClick;
+    }
+
+    public boolean isRightClick() { return isRightClick; }
     public int getMouseX() { return mouseX; }
     public int getMouseY() { return mouseY; }
     public GameStates getState() { return state; }
@@ -58,6 +64,7 @@ public class Game {
         // Level tick
         if (this.state == GameStates.LEVEL_1 && this.currentLevel != null) {
             this.currentLevel.setMousePosition(this.mouseX, this.mouseY);
+            this.currentLevel.setRightClick(this.isRightClick);
             this.currentLevel.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount, scrollDelta);
 
             // Check if player died during level tick

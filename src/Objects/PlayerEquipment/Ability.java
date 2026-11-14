@@ -15,6 +15,15 @@ public abstract class Ability {
     protected int targetX;
     protected int targetY;
     protected Color iconColor = Color.MAGENTA;
+    protected String spritePath = "images/drops/scroll.png";
+
+    public String getSpritePath() {
+        return spritePath;
+    }
+
+    public void setSpritePath(String spritePath) {
+        this.spritePath = spritePath;
+    }
 
     public Ability(int cooldownTicks) {
         this.cooldownTicks = cooldownTicks;

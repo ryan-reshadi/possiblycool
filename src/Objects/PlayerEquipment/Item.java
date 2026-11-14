@@ -11,11 +11,13 @@ public abstract class Item {
     protected String name = "Item";
     protected String description = "";
     protected Color iconColor = Color.GRAY;
+    protected String spritePath = null;
 
     public Item(boolean visible, String imgpath) {
         if (!visible) {
             throw new IllegalArgumentException("Bad Input; This constructor is ONLY for visible items, first argument should be true");
         }
+        this.spritePath = imgpath;
     }
 
     public Item() {
@@ -43,6 +45,14 @@ public abstract class Item {
 
     public void setIconColor(Color iconColor) {
         this.iconColor = iconColor;
+    }
+
+    public String getSpritePath() {
+        return spritePath;
+    }
+
+    public void setSpritePath(String spritePath) {
+        this.spritePath = spritePath;
     }
 
     public void tick(int currentTick, int clickXDown, int clickYDown, int clickXUp, int clickYUp, ArrayList<VisualObject> targets, Player owner) {

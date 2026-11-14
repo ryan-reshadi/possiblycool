@@ -27,6 +27,7 @@ public class Armor extends Item {
         this.description = description;
         this.slot = slot;
         this.iconColor = (slot == ArmorSlot.HEAD) ? new Color(100, 149, 237) : new Color(65, 105, 225);
+        this.spritePath = (slot == ArmorSlot.HEAD) ? "images/drops/helmet.png" : "images/drops/chestplate.png";
 
         double cap = (slot == ArmorSlot.HEAD) ? HEAD_MAX_REDUCTION : BODY_MAX_REDUCTION;
         this.armorReduction = Math.max(0.0, Math.min(cap, armorReduction));

@@ -14,6 +14,7 @@ public class App extends JPanel {
     private int clickYUp = -1;
     private int mouseX = 0;
     private int mouseY = 0;
+    private boolean isRightClick = false;
     private int scrollDelta = 0;
     private final Set<Integer> pressedKeys = new HashSet<>();
     private final Game game;
@@ -29,6 +30,7 @@ public class App extends JPanel {
                 clickYDown = e.getY();
                 mouseX = e.getX();
                 mouseY = e.getY();
+                isRightClick = SwingUtilities.isRightMouseButton(e);
             }
 
             @Override
@@ -86,8 +88,9 @@ public class App extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // Update mouse position on game
+        // Update mouse position and right click on game
         this.game.setMousePosition(this.mouseX, this.mouseY);
+        this.game.setRightClick(this.isRightClick);
 
         // Single screen update call per frame
         this.game.screenUpdate(g, this.pressedKeys, this.clickXDown, this.clickYDown, this.clickXUp, this.clickYUp, this.scrollDelta);
@@ -97,6 +100,7 @@ public class App extends JPanel {
         this.clickYDown = -1;
         this.clickXUp = -1;
         this.clickYUp = -1;
+        this.isRightClick = false;
         this.scrollDelta = 0;
     }
 

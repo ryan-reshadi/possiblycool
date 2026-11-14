@@ -176,7 +176,14 @@ public class Player extends Entity {
 
     public void attack(int clickXDown, int clickYDown, int currentTick) {
         if (MainHandIndex >= 0 && MainHandIndex < inventory.length && inventory[MainHandIndex] != null) {
-            inventory[MainHandIndex].tick(currentTick, clickXDown, clickYDown, -1, -1, null, this);
+            Item item = inventory[MainHandIndex];
+            item.tick(currentTick, clickXDown, clickYDown, -1, -1, null, this);
+            if (item instanceof Objects.PlayerEquipment.Consumable) {
+                Objects.PlayerEquipment.Consumable c = (Objects.PlayerEquipment.Consumable) item;
+                if (c.isUsed()) {
+                    inventory[MainHandIndex] = null;
+                }
+            }
         }
     }
 

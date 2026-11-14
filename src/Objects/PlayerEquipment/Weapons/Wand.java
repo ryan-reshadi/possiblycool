@@ -37,6 +37,7 @@ public class Wand extends Item {
         this.firingCooldown = firingCooldown;
         this.attackPattern = pattern;
         this.iconColor = new Color(138, 43, 226);
+        this.spritePath = "images/drops/wand.png";
 
         randomizeSpells();
         updateDescription();
