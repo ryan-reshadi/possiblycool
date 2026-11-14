@@ -22,7 +22,11 @@ public abstract class ActiveSpell {
      * Create a Projectile aimed at the given angle from (startX, startY).
      * onHit is called when the projectile hits an enemy (before it removes itself).
      */
-    public abstract Projectile createProjectile(int startX, int startY, double angle, Runnable onHit);
+    public Projectile createProjectile(int startX, int startY, double angle, Runnable onHit) {
+        return createProjectile(startX, startY, angle, damage, onHit);
+    }
+
+    public abstract Projectile createProjectile(int startX, int startY, double angle, int projectileDamage, Runnable onHit);
 
     public abstract String getName();
 

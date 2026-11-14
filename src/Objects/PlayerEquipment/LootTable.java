@@ -59,7 +59,16 @@ public final class LootTable {
                 choice -= entry.weight;
                 if (choice < 0) {
                     Item item = entry.factory.get();
-                    if (item != null && item.canBeUsedBy(player)) result.add(item);
+                    if (item != null && item.canBeUsedBy(player)) {
+                        if (item instanceof PlayerWeapon) {
+                            PlayerWeapon weapon = (PlayerWeapon) item;
+                            Item equipped = player == null ? null : player.getEquippedItem();
+                            int referenceLevel = equipped instanceof PlayerWeapon
+                                    ? ((PlayerWeapon) equipped).getLevel() : 1;
+                            weapon.setLevel(PlayerWeapon.rollLevelNear(referenceLevel, RANDOM));
+                        }
+                        result.add(item);
+                    }
                     break;
                 }
             }

@@ -14,8 +14,8 @@ public class FireBoltSpell extends ActiveSpell {
     }
 
     @Override
-    public Projectile createProjectile(int startX, int startY, double angle, Runnable onHit) {
-        return new Projectile(startX, startY, angle, projectileSpeed, damage, Color.ORANGE, onHit);
+    public Projectile createProjectile(int startX, int startY, double angle, int projectileDamage, Runnable onHit) {
+        return new Projectile(startX, startY, angle, projectileSpeed, projectileDamage, Color.ORANGE, onHit);
     }
 
     @Override

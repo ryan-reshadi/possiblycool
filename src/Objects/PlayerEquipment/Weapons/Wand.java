@@ -4,7 +4,7 @@ import Levels.BaseLevel;
 import Objects.EnemyClasses.Enemy;
 import Objects.PlayerClasses.Player;
 import Objects.PlayerClasses.WizardPlayer;
-import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.PlayerWeapon;
 import Objects.PlayerEquipment.Spells.*;
 import Objects.Projectile;
 import Objects.VisualObject;
@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class Wand extends Item {
+public class Wand extends PlayerWeapon {
 
     public enum AttackPattern {
         SINGLE, SPREAD_3, RAPID_BURST
@@ -77,6 +77,19 @@ public class Wand extends Item {
 
     public int getFiringCooldown() {
         return firingCooldown;
+    }
+
+    public int getDamage() {
+        return activeSpell == null ? 0 : getScaledDamage(activeSpell.getDamage());
+    }
+
+    public double getAttacksPerSecond() {
+        return 60.0 / Math.max(1, firingCooldown);
+    }
+
+    public int getEffectiveRange() {
+        return activeSpell == null ? 0
+                : (int) Math.round(activeSpell.getProjectileSpeed() * Projectile.MAX_LIFETIME_TICKS);
     }
 
     public void setActiveSpell(ActiveSpell spell) {
@@ -160,7 +173,7 @@ public class Wand extends Item {
 
     private void spawnBolt(int startX, int startY, double angle) {
         final Projectile[] projRef = new Projectile[1];
-        projRef[0] = activeSpell.createProjectile(startX, startY, angle, () -> {
+        projRef[0] = activeSpell.createProjectile(startX, startY, angle, getDamage(), () -> {
             if (level != null && projRef[0] != null) {
                 level.queueRemoveVisualObject(projRef[0]);
             }

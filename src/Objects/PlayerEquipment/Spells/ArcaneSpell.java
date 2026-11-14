@@ -14,8 +14,8 @@ public class ArcaneSpell extends ActiveSpell {
     }
 
     @Override
-    public Projectile createProjectile(int startX, int startY, double angle, Runnable onHit) {
-        return new Projectile(startX, startY, angle, projectileSpeed, damage, Color.MAGENTA, onHit);
+    public Projectile createProjectile(int startX, int startY, double angle, int projectileDamage, Runnable onHit) {
+        return new Projectile(startX, startY, angle, projectileSpeed, projectileDamage, Color.MAGENTA, onHit);
     }
 
     @Override

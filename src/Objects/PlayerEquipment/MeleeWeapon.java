@@ -9,7 +9,7 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.List;
 
-public abstract class MeleeWeapon extends Item {
+public abstract class MeleeWeapon extends PlayerWeapon {
 
     protected static class AttackMove {
         final int range;
@@ -62,11 +62,29 @@ public abstract class MeleeWeapon extends Item {
     }
 
     public int getDamage() {
-        return damage;
+        return getScaledDamage(damage);
     }
 
     public void setDamage(int damage) {
         this.damage = damage;
+    }
+
+    public int getAttackRange() {
+        if (comboMoves == null) return attackRange;
+        int range = attackRange;
+        for (AttackMove move : comboMoves) range = Math.max(range, move.range);
+        return range;
+    }
+
+    public double getAttacksPerSecond() {
+        if (comboMoves == null) {
+            return 60.0 / Math.max(1, attackAnimationLength + 1);
+        }
+        int totalTicks = 0;
+        for (AttackMove move : comboMoves) {
+            totalTicks += move.animationTicks + 1;
+        }
+        return comboMoves.length * 60.0 / Math.max(1, totalTicks);
     }
 
     protected final AttackMove move(int range, int angle, double durationSeconds, double damageDelaySeconds,
@@ -149,7 +167,7 @@ public abstract class MeleeWeapon extends Item {
                 for (Enemy enemy : enemies) {
                     if (enemy != null && !enemy.isDead() && enemy.getHitbox() != null) {
                         if (touchingOtherHitBox(attackBox, enemy.getHitbox())) {
-                            int attackDamage = Math.max(1, (int) Math.round(damage * activeMove.damageMultiplier));
+                            int attackDamage = Math.max(1, (int) Math.round(getDamage() * activeMove.damageMultiplier));
                             enemy.hit(attackDamage, attackSourceX, attackSourceY,
                                     knockbackForce * activeMove.knockbackMultiplier, attackTick);
                         }

@@ -24,7 +24,7 @@ public class Projectile extends VisualObject {
     private PassiveSpell[] passives;
 
     private int ticksAlive = 0;
-    private final int maxTicks = 180; // 3 seconds at 60 ticks/sec
+    public static final int MAX_LIFETIME_TICKS = 180;
 
     private double px;
     private double py;
@@ -62,7 +62,7 @@ public class Projectile extends VisualObject {
 
         ticksAlive++;
 
-        if (ticksAlive > maxTicks) {
+        if (ticksAlive > MAX_LIFETIME_TICKS) {
             removed = true;
             if (onRemove != null) onRemove.run();
             return;

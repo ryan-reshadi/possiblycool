@@ -540,14 +540,18 @@ public class InventoryPanel {
         } else if (obj instanceof Wand) {
             Wand w = (Wand) obj;
             title = w.getName();
-            badge = "MAGIC WAND  •  " + w.getAttackPattern();
-            desc = w.getDescription();
+            badge = "LEVEL " + w.getLevel() + "  •  " + w.getDamage() + " DAMAGE";
+            desc = w.getDescription() + " | Fire rate: "
+                    + String.format("%.2f attacks/s", w.getAttacksPerSecond())
+                    + " | Range: " + w.getEffectiveRange() + " px";
             glowColor = new Color(180, 80, 255);
         } else if (obj instanceof MeleeWeapon) {
             MeleeWeapon mw = (MeleeWeapon) obj;
             title = mw.getName();
-            badge = "MELEE WEAPON  •  " + mw.getDamage() + " DAMAGE";
-            desc = mw.getDescription();
+            badge = "LEVEL " + mw.getLevel() + "  •  " + mw.getDamage() + " DAMAGE";
+            desc = mw.getDescription() + " | Swing speed: "
+                    + String.format("%.2f attacks/s", mw.getAttacksPerSecond())
+                    + " | Range: " + mw.getAttackRange() + " px";
             glowColor = new Color(255, 215, 0);
         } else if (obj instanceof Consumable) {
             Consumable c = (Consumable) obj;
