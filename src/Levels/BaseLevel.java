@@ -3,19 +3,21 @@ package Levels;
 import Objects.*;
 import Objects.EnemyClasses.*;
 import Objects.PlayerClasses.Player;
-import Objects.PlayerEquipment.MeleeWeapon;
+import Objects.PlayerEquipment.*;
+import Objects.PlayerEquipment.Armor.ArmorSlot;
+import Objects.PlayerEquipment.Weapons.Dagger;
+import Objects.PlayerEquipment.Weapons.Wand;
 import Objects.Terrain.*;
+import ShapeCore.AbilityBarUI;
+import ShapeCore.HotbarUI;
+import ShapeCore.InventoryPanel;
 import ShapeCore.Buttons.*;
 
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Image;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
 import javax.imageio.ImageIO;
 
 public class BaseLevel {
@@ -26,28 +28,45 @@ public class BaseLevel {
     protected Image backgroundImage;
     protected int bgX = 0;
     protected int bgY = 0;
-    // protected ArrayList<Player> players;
     protected Player player;
-    protected int buffer = 50;
+    protected int buffer = 80;
     protected int offsetX = 0;
     protected int offsetY = 0;
     protected Color backgroundColor = null;
 
-    // Queues for deferred add/remove
     protected List<VisualObject> addList = new LinkedList<>();
     protected List<VisualObject> removeList = new LinkedList<>();
+
+    // UI Systems
+    protected HotbarUI hotbarUI = new HotbarUI();
+    protected AbilityBarUI abilityBarUI = new AbilityBarUI();
+    protected InventoryPanel inventoryPanel = new InventoryPanel();
+
+    protected int mouseX = 0;
+    protected int mouseY = 0;
+    protected boolean isRightClick = false;
+
+    // Ability key debounces
+    private boolean qWasDown = false;
+    private boolean eWasDown = false;
+    private boolean fWasDown = false;
+    private boolean cameraInitialized = false;
+    private static final int PLAYER_SCREEN_X = 950;
+    private static final int PLAYER_SCREEN_Y = 500;
 
     public BaseLevel(int bgX, int bgY, String path, ArrayList<VisualObject> players) {
         this.bgX = bgX;
         this.bgY = bgY;
         this.initArrays(players);
         try {
-            this.backgroundImage = ImageIO.read(new File(path));
+            File f = new File(path);
+            if (f.exists()) {
+                this.backgroundImage = ImageIO.read(f);
+            }
         } catch (IOException e) {
-            System.out.println("Image could not be loaded.");
             e.printStackTrace();
         }
-        this.initLevel(); // Initialize level-specific elements
+        this.initLevel();
     }
 
     public BaseLevel(Color color, ArrayList<VisualObject> players) {
@@ -56,49 +75,56 @@ public class BaseLevel {
     }
 
     private void initArrays(ArrayList<VisualObject> players) {
-        this.levelVisualObjects.add(players); // Row for Player objects
-        this.levelVisualObjects.add(new ArrayList<>()); // Row for Wall objects
-        this.levelVisualObjects.add(new ArrayList<>()); // Row for Enemy objects
-        this.levelVisualObjects.add(new ArrayList<>()); // Row for Button objects
-        this.player = (Player) players.get(0); // Set the main player
-    }
-
-    /**
-     * Get the currently equipped melee weapon (if any)
-     */
-    private MeleeWeapon getEquippedWeapon() {
-        if (this.player.getMainHandIndex() >= 0 && this.player.getMainHandIndex() < this.player.getInventory().length
-                && this.player.getInventory()[this.player.getMainHandIndex()] instanceof MeleeWeapon) {
-            return (MeleeWeapon) this.player.getInventory()[this.player.getMainHandIndex()];
+        this.levelVisualObjects.add(players);               // 0: Player
+        this.levelVisualObjects.add(new ArrayList<>());     // 1: Walls / Borders
+        this.levelVisualObjects.add(new ArrayList<>());     // 2: Enemies
+        this.levelVisualObjects.add(new ArrayList<>());     // 3: Buttons / UI
+        this.levelVisualObjects.add(new ArrayList<>());     // 4: Projectiles / Effects / DroppedItems
+        if (!players.isEmpty() && players.get(0) instanceof Player) {
+            this.player = (Player) players.get(0);
+            this.player.setX(PLAYER_SCREEN_X - this.player.getWidth() / 2);
+            this.player.setY(PLAYER_SCREEN_Y - this.player.getHeight() / 2);
         }
-        return null;
     }
 
-    /**
-     * Check if player's weapon is currently animating
-     */
-    private boolean isPlayerWeaponAnimating() {
-        MeleeWeapon weapon = getEquippedWeapon();
-        return weapon != null && weapon.isInAnimation();
+    public void setMousePosition(int x, int y) {
+        this.mouseX = x;
+        this.mouseY = y;
     }
 
-    // Use this to queue an object for addition
+    public void setRightClick(boolean rightClick) {
+        this.isRightClick = rightClick;
+    }
+
+    public List<Enemy> getEnemies() {
+        List<Enemy> list = new ArrayList<>();
+        if (this.levelVisualObjects.size() > 2) {
+            for (VisualObject obj : this.levelVisualObjects.get(2)) {
+                if (obj instanceof Enemy && !((Enemy) obj).isDead()) {
+                    list.add((Enemy) obj);
+                }
+            }
+        }
+        return list;
+    }
+
     public void queueAddVisualObject(VisualObject obj) {
         if (obj != null) {
             addList.add(obj);
         }
     }
 
-    // Use this to queue an object for removal
     public void queueRemoveVisualObject(VisualObject obj) {
         if (obj != null) {
             removeList.add(obj);
         }
     }
 
-    // Call this after iterating over levelVisualObjects to apply changes
+    public void collectItem(Item item) {
+        this.inventoryPanel.addItem(item);
+    }
+
     public void processQueuedVisualObjectChanges() {
-        // Remove objects
         for (VisualObject obj : removeList) {
             for (ArrayList<VisualObject> row : levelVisualObjects) {
                 row.remove(obj);
@@ -106,7 +132,6 @@ public class BaseLevel {
         }
         removeList.clear();
 
-        // Add objects
         for (VisualObject obj : addList) {
             addVisualObject(obj);
         }
@@ -118,127 +143,236 @@ public class BaseLevel {
     }
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, int scrollDelta) {
-        // Draw level elements
-
         this.drawBG(g);
-        this.updateOffset();
-        this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
-        this.mouseHandler(clickXDown, clickYDown, tickCount);
-        this.scrollHandler(scrollDelta);
+
+        if (this.player != null && !this.player.isDead()) {
+            // Feed current enemy list and level into equipped weapon
+            List<Enemy> activeEnemies = getEnemies();
+            Item equipped = this.player.getEquippedItem();
+            if (equipped instanceof MeleeWeapon) {
+                ((MeleeWeapon) equipped).setEnemies(activeEnemies);
+            } else if (equipped instanceof Wand) {
+                Wand wand = (Wand) equipped;
+                wand.setEnemies(activeEnemies);
+                wand.setLevel(this);
+            }
+
+            // If inventory is open, clicks interact with inventory panel instead of game world
+            if (this.player.isInventoryOpen()) {
+                this.inventoryPanel.handlePointer(clickXDown, clickYDown, clickXUp, clickYUp,
+                        this.isRightClick, this.player, 1900, 1000, tickCount);
+            } else {
+                this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
+                this.mouseHandler(clickXDown, clickYDown, tickCount);
+                this.scrollHandler(scrollDelta);
+                this.checkInteractions(pressedKeys, tickCount);
+            }
+        }
+
+        // Tick all objects
         for (ArrayList<VisualObject> row : this.levelVisualObjects) {
-            for (VisualObject obj : row) {
-                if (obj != null) {
-                    if (obj instanceof Player) {
-                        ((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
-                    } else {
-                        obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+            for (int i = row.size() - 1; i >= 0; i--) {
+                if (i < row.size()) {
+                    VisualObject obj = row.get(i);
+                    if (obj != null) {
+                        if (obj instanceof Player) {
+                            ((Player) obj).tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount, this.levelVisualObjects.get(2));
+                        } else if (obj instanceof Enemy) {
+                            Enemy enemy = (Enemy) obj;
+                            enemy.setBorders(this.levelVisualObjects.get(1));
+                            enemy.setProjectileSink(this::queueAddVisualObject);
+                            enemy.checkAggro(this.player);
+                            obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+                        } else {
+                            obj.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, tickCount);
+                        }
                     }
-//                    obj.testWorking();
                 }
             }
         }
-        g.setColor(Color.WHITE);
-        this.displayUI(g); // Display UI elements
-        // After iteration, process queued changes
-        this.processQueuedVisualObjectChanges();
 
-        // System.out.println("BaseLevel tick: " + tickCount);
+        // Follow after movement so the camera responds to the player's current
+        // position instead of chasing the previous frame's position.
+        if (this.player != null && !this.cameraInitialized) this.cameraInitialized = true;
+
+        // Draw HUD overlay
+        this.displayUI(g, tickCount);
+
+        // Draw Inventory Panel if open
+        if (this.player != null && this.player.isInventoryOpen()) {
+            this.inventoryPanel.draw(g, this.player, this.mouseX, this.mouseY, 1900, 1000);
+        }
+
+        this.processQueuedVisualObjectChanges();
     }
 
-    private void displayUI(Graphics g) {
-        // Display UI elements like health, score, etc.
-        g.setColor(Color.WHITE);
-        int defaultX = 1750;
-        int defaultY = 900;
-        if (this.player.getX() > 1800 && this.player.getY() > 900) {
-            defaultX = 10;
-            defaultY = 20;
-        }
-        g.drawString("Health: " + this.player.getHealth() + "/" + this.player.getMaxHealth(), defaultX, defaultY);
-        g.setColor(Color.RED);
-        g.fillRect(defaultX, defaultY + 10, 100 * player.getHealth() / player.getMaxHealth(), 10);
-        g.setColor(Color.WHITE);
-        g.drawRect(defaultX, defaultY + 10, 100, 10);
-        g.drawString("Rolls: " + this.player.rolls + "/" + this.player.maxRolls, defaultX, defaultY + 40);
+    private void checkInteractions(Set<Integer> pressedKeys, int currentTick) {
+        if (this.player == null) return;
 
-        // Add more UI elements as needed
+        // Checkpoints & Chests & Dropped items
+        for (ArrayList<VisualObject> row : this.levelVisualObjects) {
+            for (VisualObject obj : row) {
+                if (obj instanceof Checkpoint) {
+                    ((Checkpoint) obj).checkActivation(this.player);
+                } else if (obj instanceof Chest) {
+                    ((Chest) obj).tryOpen(this.player, pressedKeys);
+                } else if (obj instanceof DroppedItem) {
+                    ((DroppedItem) obj).checkPickup(this.player);
+                }
+            }
+        }
+
+        // Abilities: Q=81, E=69, F=70
+        boolean qDown = pressedKeys.contains(81);
+        if (qDown && !qWasDown) {
+            this.player.tryActivateAbility(0, this, currentTick, mouseX, mouseY);
+        }
+        qWasDown = qDown;
+
+        boolean eDown = pressedKeys.contains(69);
+        if (eDown && !eWasDown) {
+            // E triggers ability 1 if not opening a chest
+            this.player.tryActivateAbility(1, this, currentTick, mouseX, mouseY);
+        }
+        eWasDown = eDown;
+
+        boolean fDown = pressedKeys.contains(70);
+        if (fDown && !fWasDown) {
+            this.player.tryActivateAbility(2, this, currentTick, mouseX, mouseY);
+        }
+        fWasDown = fDown;
+    }
+
+    private void displayUI(Graphics g, int currentTick) {
+        if (this.player == null) return;
+
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // 1. Health Bar (Bottom Left)
+        int hx = 30;
+        int hy = 910;
+        int barW = 200;
+        int barH = 18;
+
+        g2d.setColor(new Color(25, 25, 30, 200));
+        g2d.fillRoundRect(hx - 8, hy - 26, barW + 16, barH + 46, 10, 10);
+        g2d.setColor(new Color(70, 70, 85));
+        g2d.drawRoundRect(hx - 8, hy - 26, barW + 16, barH + 46, 10, 10);
+
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("HP: " + player.getHealth() + " / " + player.getMaxHealth(), hx, hy - 8);
+
+        // Armor reduction display
+        if (player.getTotalArmorReduction() > 0) {
+            g2d.setColor(new Color(100, 180, 255));
+            g2d.drawString(String.format("Armor: %.0f%%", player.getTotalArmorReduction() * 100), hx + 120, hy - 8);
+        }
+
+        g2d.setColor(new Color(50, 20, 20));
+        g2d.fillRoundRect(hx, hy, barW, barH, 6, 6);
+
+        int currentW = (int) Math.max(0, ((double) player.getHealth() / player.getMaxHealth()) * barW);
+        g2d.setColor(new Color(220, 40, 40));
+        g2d.fillRoundRect(hx, hy, currentW, barH, 6, 6);
+        g2d.setColor(Color.WHITE);
+        g2d.drawRoundRect(hx, hy, barW, barH, 6, 6);
+
+        // Rolls indicator pips
+        int rollX = hx;
+        int rollY = hy + 24;
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g2d.setColor(new Color(200, 200, 220));
+        g2d.drawString("Rolls [R]:", rollX, rollY);
+        for (int r = 0; r < player.maxRolls; r++) {
+            int rx = rollX + 55 + r * 16;
+            if (r < player.rolls) {
+                g2d.setColor(new Color(255, 215, 0));
+                g2d.fillOval(rx, rollY - 9, 10, 10);
+            } else {
+                g2d.setColor(new Color(80, 80, 90));
+                g2d.drawOval(rx, rollY - 9, 10, 10);
+            }
+        }
+
+        // 2. Ability Bar (Q, E, F)
+        abilityBarUI.draw(g, player.getAbilitySlots(), currentTick, 1900, 1000);
+
+        // 3. Hotbar (1-9)
+        hotbarUI.draw(g, player.getInventory(), player.getMainHandIndex(), 1900, 1000);
+
+        // Inventory toggle hint
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g2d.setColor(new Color(160, 160, 180));
+        g2d.drawString("[I] Inventory", 1780, 970);
     }
 
     public void drawBG(Graphics g) {
         if (this.backgroundImage != null) {
             g.drawImage(this.backgroundImage, this.bgX, this.bgY, null);
         } else {
-            g.setColor(this.backgroundColor != null ? this.backgroundColor : java.awt.Color.GRAY);
-            g.fillRect(this.bgX, this.bgY, 1900, 1000);
+            g.setColor(this.backgroundColor != null ? this.backgroundColor : new Color(30, 30, 35));
+            g.fillRect(0, 0, 1900, 1000);
         }
     }
 
     public void addVisualObject(VisualObject obj) {
         if (obj != null) {
-            if (obj instanceof Button) {
-                this.levelVisualObjects.get(3).add(obj); // Add to Button row
+            if (obj instanceof ShapeCore.Buttons.Button) {
+                this.levelVisualObjects.get(3).add(obj);
             } else if (obj instanceof Border) {
-                this.levelVisualObjects.get(1).add(obj); // Add to Wall row
+                this.levelVisualObjects.get(1).add(obj);
             } else if (obj instanceof Enemy) {
-                this.levelVisualObjects.get(2).add(obj); // Add to Enemy row
+                this.levelVisualObjects.get(2).add(obj);
+            } else if (obj instanceof Player) {
+                this.levelVisualObjects.get(0).add(obj);
             } else {
-                this.levelVisualObjects.get(0).add(obj); // Add to Player row
+                // Projectiles, DroppedItems, Effects, Checkpoints, Chests
+                if (this.levelVisualObjects.size() > 4) {
+                    this.levelVisualObjects.get(4).add(obj);
+                } else {
+                    this.levelVisualObjects.get(0).add(obj);
+                }
             }
         }
     }
 
     public void keyHandler(Set<Integer> pressedKeys, int clickXDown, int clickYDown, int tickCount) {
+        if (player == null) return;
 
-        // Handle movement
-        int nextX = player.getX();
-        int nextY = player.getY();
         int speed = (int) player.getSpeed();
-
         int moveX = 0;
         int moveY = 0;
 
-        if (pressedKeys.contains(82) && player.rolls > 0) { // R
-            if (pressedKeys.contains(65)) { // A
-                moveX -= 50 * speed;
-            }
-            if (pressedKeys.contains(68)) { // D
-                moveX += 50 * speed;
-            }
-            if (pressedKeys.contains(87)) { // W
-                moveY -= 50 * speed;
-            }
-            if (pressedKeys.contains(83)) { // S
-                moveY += 50 * speed;
-            }
-            player.rollCooldown(tickCount, 180); // Start roll cooldown
+        // Roll mechanic: R (82)
+        if (pressedKeys.contains(82) && player.rolls > 0) {
+            int rollDist = 40;
+            if (pressedKeys.contains(65)) moveX -= rollDist * speed;
+            if (pressedKeys.contains(68)) moveX += rollDist * speed;
+            if (pressedKeys.contains(87)) moveY -= rollDist * speed;
+            if (pressedKeys.contains(83)) moveY += rollDist * speed;
+            player.rollCooldown(tickCount, 180);
         }
-        if (!this.isPlayerWeaponAnimating()) {
-            if (pressedKeys.contains(65)) { // A
-                moveX -= speed;
-            }
-            if (pressedKeys.contains(68)) { // D
-                moveX += speed;
-            }
-            if (pressedKeys.contains(87)) { // W
-                moveY -= speed;
-            }
-            if (pressedKeys.contains(83)) { // S
-                moveY += speed;
-            }
-            // Handle inventory switching with number keys 1-9
+
+        if (!player.isWeaponAnimating()) {
+            if (pressedKeys.contains(65)) moveX -= speed;
+            if (pressedKeys.contains(68)) moveX += speed;
+            if (pressedKeys.contains(87)) moveY -= speed;
+            if (pressedKeys.contains(83)) moveY += speed;
+
+            // Number keys 1-9 (keycodes 49-57)
             for (int i = 1; i <= 9; i++) {
-                if (pressedKeys.contains(48 + i)) { // Key codes 49-57 for '1'-'9'
-                    player.setMainHandIndex(i - 1); // Set MainHandIndex to 0-8
+                if (pressedKeys.contains(48 + i)) {
+                    player.setMainHandIndex(i - 1);
                     break;
                 }
             }
         }
 
-        // Try to move as close as possible to the border
-        int finalX = nextX;
-        int finalY = nextY;
+        int finalX = player.getX();
+        int finalY = player.getY();
 
-        // Move in X direction
         if (moveX != 0) {
             int stepX = moveX > 0 ? 1 : -1;
             for (int i = 0; i < Math.abs(moveX); i++) {
@@ -246,23 +380,24 @@ public class BaseLevel {
                 boolean collides = false;
                 for (VisualObject obj : this.levelVisualObjects.get(1)) {
                     if (obj instanceof Border) {
-                        if (testX < obj.getX() + obj.getWidth()
-                                && testX + player.getWidth() > obj.getX()
-                                && finalY < obj.getY() + obj.getHeight()
-                                && finalY + player.getHeight() > obj.getY()) {
+                        Border b = (Border) obj;
+                        if (b instanceof BossDoor && !((BossDoor) b).isLocked()) {
+                            continue; // Can pass through unlocked boss door
+                        }
+                        if (testX < b.getX() + b.getWidth()
+                                && testX + player.getWidth() > b.getX()
+                                && finalY < b.getY() + b.getHeight()
+                                && finalY + player.getHeight() > b.getY()) {
                             collides = true;
                             break;
                         }
                     }
                 }
-                if (collides) {
-                    break;
-                }
+                if (collides) break;
                 finalX = testX;
             }
         }
 
-        // Move in Y direction
         if (moveY != 0) {
             int stepY = moveY > 0 ? 1 : -1;
             for (int i = 0; i < Math.abs(moveY); i++) {
@@ -270,128 +405,125 @@ public class BaseLevel {
                 boolean collides = false;
                 for (VisualObject obj : this.levelVisualObjects.get(1)) {
                     if (obj instanceof Border) {
-                        if (finalX < obj.getX() + obj.getWidth()
-                                && finalX + player.getWidth() > obj.getX()
-                                && testY < obj.getY() + obj.getHeight()
-                                && testY + player.getHeight() > obj.getY()) {
+                        Border b = (Border) obj;
+                        if (b instanceof BossDoor && !((BossDoor) b).isLocked()) {
+                            continue;
+                        }
+                        if (finalX < b.getX() + b.getWidth()
+                                && finalX + player.getWidth() > b.getX()
+                                && testY < b.getY() + b.getHeight()
+                                && testY + player.getHeight() > b.getY()) {
                             collides = true;
                             break;
                         }
                     }
                 }
-                if (collides) {
-                    break;
-                }
+                if (collides) break;
                 finalY = testY;
             }
         }
 
-        player.setX(finalX);
-        player.setY(finalY);
+        movePlayerInWorld(finalX - player.getX(), finalY - player.getY());
+    }
 
+    /** Moves the world opposite to player travel while keeping the player screen-locked. */
+    public void movePlayerInWorld(int worldDx, int worldDy) {
+        if (player == null || (worldDx == 0 && worldDy == 0)) return;
+        int dx = -worldDx;
+        int dy = -worldDy;
+        offsetX += dx;
+        offsetY += dy;
+        bgX += dx;
+        bgY += dy;
+        for (int rowIndex = 1; rowIndex < levelVisualObjects.size(); rowIndex++) {
+            for (VisualObject obj : levelVisualObjects.get(rowIndex)) {
+                if (obj != null && obj.moveable) obj.move(dx, dy);
+            }
+        }
     }
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
-        if (clickXDown == -1 || clickYDown == -1) {
-            return;
-        }
-        if (this.player != null) {
-
-            this.player.attack(clickXDown, clickYDown, currentTick);
-        }
+        if (clickXDown == -1 || clickYDown == -1 || player == null) return;
+        this.player.attack(clickXDown, clickYDown, currentTick);
     }
 
     public void scrollHandler(int scrollDelta) {
         if (scrollDelta != 0 && this.player != null) {
             int currentIndex = this.player.getMainHandIndex();
             int newIndex = currentIndex + scrollDelta;
-            
-            // Wrap around inventory (0-8)
-            if (newIndex < 0) {
-                newIndex = 8;
-            } else if (newIndex > 8) {
-                newIndex = 0;
-            }
-            
+            if (newIndex < 0) newIndex = 8;
+            else if (newIndex > 8) newIndex = 0;
             this.player.setMainHandIndex(newIndex);
         }
     }
 
     protected void updateOffset() {
-        if (!this.levelVisualObjects.get(0).isEmpty() && this.player instanceof Player && this.playerOnBorder()) {
-            if (this.player.getX() < this.buffer) {
-                if (this.backgroundImage != null) {
-                    this.bgX += this.player.getSpeed();
-                }
-                this.offsetX += this.player.getSpeed();
-                for (ArrayList<VisualObject> row : this.levelVisualObjects) {
-                    for (VisualObject obj : row) {
-                        if (obj != null && obj.moveable) {
-                            obj.move((int) this.player.getSpeed(), 0); // Move right
-                        }
-                    }
-                }
-            } else if (this.player.getX() > 1900 - this.buffer) {
-                if (this.backgroundImage != null) {
-                    this.bgX -= this.player.getSpeed();
-                }
-                this.offsetX -= this.player.getSpeed();
-                for (ArrayList<VisualObject> row : this.levelVisualObjects) {
-                    for (VisualObject obj : row) {
-                        if (obj != null && obj.moveable) {
-                            obj.move(-(int) this.player.getSpeed(), 0); // Move left
-                        }
-                    }
-                }
-            } else if (this.player.getY() < this.buffer) {
-                if (this.backgroundImage != null) {
-                    this.bgY += this.player.getSpeed();
-                }
-                this.offsetY += this.player.getSpeed();
-                for (ArrayList<VisualObject> row : this.levelVisualObjects) {
-                    for (VisualObject obj : row) {
-                        if (obj != null && obj.moveable) {
-                            obj.move(0, (int) this.player.getSpeed()); // Move down
-                        }
-                    }
-                }
-            } else if (this.player.getY() > 1000 - this.buffer) {
-                if (this.backgroundImage != null) {
-                    this.bgY -= this.player.getSpeed();
-                }
-                this.offsetY -= this.player.getSpeed();
-                for (ArrayList<VisualObject> row : this.levelVisualObjects) {
-                    for (VisualObject obj : row) {
-                        if (obj != null && obj.moveable) {
-                            obj.move(0, -(int) this.player.getSpeed()); // Move up
-                        }
+        if (this.player == null) return;
+
+        int dx = 0;
+        int dy = 0;
+
+        // Leave the camera still until the player approaches a screen edge. Then
+        // ease the scene toward the player's screen center, with a capped step so
+        // camera motion stays smooth and doesn't feel like a snap.
+        int screenX = this.player.getX() + this.player.getWidth() / 2;
+        int screenY = this.player.getY() + this.player.getHeight() / 2;
+        int horizontalMargin = 100;
+        int verticalMargin = 80;
+        int centerX = 1900 / 2;
+        int centerY = 1000 / 2;
+        int left = horizontalMargin;
+        int right = 1900 - horizontalMargin;
+        int top = verticalMargin;
+        int bottom = 1000 - verticalMargin;
+
+        if (screenX < left || screenX > right) {
+            dx = smoothCameraStep(centerX - screenX);
+        }
+        if (screenY < top || screenY > bottom) {
+            dy = smoothCameraStep(centerY - screenY);
+        }
+
+        if (dx != 0 || dy != 0) {
+            this.offsetX += dx;
+            this.offsetY += dy;
+            this.bgX += dx;
+            this.bgY += dy;
+            for (ArrayList<VisualObject> row : this.levelVisualObjects) {
+                for (VisualObject obj : row) {
+                    if (obj != null && obj.moveable) {
+                        obj.move(dx, dy);
                     }
                 }
             }
         }
     }
 
-    protected boolean playerOnBorder() {
-        return (this.player.getX() < this.buffer
-                || this.player.getX() > 1900 - this.buffer
-                || this.player.getY() < this.buffer
-                || this.player.getY() > 1000 - this.buffer);
+    private int smoothCameraStep(int distance) {
+        // Move a substantial fraction of the remaining distance each frame,
+        // while capping large jumps. This converges to center smoothly and
+        // avoids the slow, repeated edge correction of the previous behavior.
+        int step = (int) Math.round(distance * 0.22);
+        if (step == 0 && distance != 0) step = Integer.signum(distance);
+        return Math.max(-48, Math.min(48, step));
     }
 
-    //child classes override to initialize their specific visual objects
     protected void initLevel() {
-        // Initialize level-specific elements
     }
 
-    protected void addBorder(Border b) {
+    public void addBorder(Border b) {
         this.levelVisualObjects.get(1).add(b);
     }
 
-    protected void addEnemy(Enemy e) {
+    public void addEnemy(Enemy e) {
         this.levelVisualObjects.get(2).add(e);
     }
 
-    protected void addButton(Button b) {
+    public void addButton(ShapeCore.Buttons.Button b) {
         this.levelVisualObjects.get(3).add(b);
+    }
+
+    public InventoryPanel getInventoryPanel() {
+        return inventoryPanel;
     }
 }
