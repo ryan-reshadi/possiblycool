@@ -17,6 +17,9 @@ public abstract class MeleeWeapon extends Item {
     protected int attackRange = 100;
     protected int attackAngle = 30;
     protected int damage = 25;
+    protected double knockbackForce = 5.0;
+    protected int attackSourceX;
+    protected int attackSourceY;
     protected Arc2D attackBox;
     protected boolean attackDamageApplied = false;
     protected List<Enemy> enemies;
@@ -48,6 +51,9 @@ public abstract class MeleeWeapon extends Item {
 
         double deltaX = -1 * (processedX - clickXDown);
         double deltaY = -1 * (processedY - clickYDown);
+
+        this.attackSourceX = processedX;
+        this.attackSourceY = processedY;
 
         double angleRadians = Math.atan2(deltaY, deltaX);
         double angleDegrees = Math.toDegrees(angleRadians);
@@ -103,7 +109,7 @@ public abstract class MeleeWeapon extends Item {
                 for (Enemy enemy : enemies) {
                     if (enemy != null && !enemy.isDead() && enemy.getHitbox() != null) {
                         if (touchingOtherHitBox(attackBox, enemy.getHitbox())) {
-                            enemy.hurt(damage);
+                            enemy.hit(damage, attackSourceX, attackSourceY, knockbackForce, currentTick);
                         }
                     }
                 }

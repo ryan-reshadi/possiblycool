@@ -27,6 +27,15 @@ public class Enemy extends Entity {
     protected int slowEndTick = -1;
     protected int stunnedUntilTick = -1;
 
+    // Hit reaction. The force is applied over a short window so normal AI cannot
+    // immediately cancel the displacement or start an attack while being struck.
+    protected double knockbackX;
+    protected double knockbackY;
+    protected int knockbackTicksRemaining;
+    protected int knockbackTicksTotal;
+    protected int interruptedUntilTick = -1;
+    protected int currentTick;
+
     // Drop table callback
     protected Runnable onDeath = null;
     protected boolean deathHandled = false;
@@ -93,6 +102,58 @@ public class Enemy extends Entity {
         this.stunnedUntilTick = currentTick + ticks;
     }
 
+    public void knockbackFrom(int sourceX, int sourceY, double force, int currentTick) {
+        double dx = this.x + this.width / 2.0 - sourceX;
+        double dy = this.y + this.height / 2.0 - sourceY;
+        double distance = Math.hypot(dx, dy);
+        if (distance == 0) {
+            dx = 1;
+            dy = 0;
+            distance = 1;
+        }
+        this.knockbackX = dx / distance * force;
+        this.knockbackY = dy / distance * force;
+        this.knockbackTicksRemaining = Math.max(1, (int) Math.ceil(force / 2.0));
+        this.knockbackTicksTotal = this.knockbackTicksRemaining;
+        this.interruptedUntilTick = Math.max(this.interruptedUntilTick,
+                currentTick + this.knockbackTicksRemaining + getAttackCooldownTicks());
+        this.lastAttackInterrupted();
+    }
+
+    protected int getAttackCooldownTicks() {
+        return 0;
+    }
+
+    /** Apply an incoming hit, interrupting the enemy's current attack pattern. */
+    public void hit(int damage, int sourceX, int sourceY, double knockbackForce, int currentTick) {
+        if (damage <= 0 || isDead()) return;
+        hurt(damage);
+        if (!isDead()) {
+            knockbackFrom(sourceX, sourceY, knockbackForce, currentTick);
+        }
+    }
+
+    /** Subclasses can clear any attack windup or queued attack when hit. */
+    protected void lastAttackInterrupted() {
+        // No pending attack state in the base enemy.
+    }
+
+    protected boolean isAttackInterrupted(int currentTick) {
+        return currentTick < interruptedUntilTick;
+    }
+
+    protected boolean applyKnockback() {
+        if (knockbackTicksRemaining <= 0) return false;
+        double progress = (double) knockbackTicksRemaining / knockbackTicksTotal;
+        this.x += (int) Math.round(knockbackX * progress);
+        this.y += (int) Math.round(knockbackY * progress);
+        knockbackTicksRemaining--;
+        if (this.hitbox != null) {
+            this.hitbox.setRect(this.x, this.y, this.width, this.height);
+        }
+        return true;
+    }
+
     public boolean isStunned(int currentTick) {
         return currentTick < stunnedUntilTick;
     }
@@ -138,6 +199,7 @@ public class Enemy extends Entity {
     @Override
     public void tick(Graphics g, Set<Integer> pressedKeys,
                      int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount) {
+        this.currentTick = tickCount;
         if (isDead()) {
             if (!deathHandled) {
                 deathHandled = true;
@@ -155,7 +217,9 @@ public class Enemy extends Entity {
 
         processStatusEffects(tickCount);
 
-        if (!isStunned(tickCount)) {
+        if (applyKnockback()) {
+            // Movement is the hit reaction; skip AI for this tick.
+        } else if (!isStunned(tickCount) && !isAttackInterrupted(tickCount)) {
             if (targetPlayer != null && !targetPlayer.isDead()) {
                 aggroLogic(tickCount);
             } else {

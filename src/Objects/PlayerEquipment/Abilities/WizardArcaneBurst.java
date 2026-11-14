@@ -32,7 +32,7 @@ public class WizardArcaneBurst extends Ability {
 
                 double dist = Math.hypot(enemyCX - targetX, enemyCY - targetY);
                 if (dist <= RADIUS) {
-                    enemy.hurt(DAMAGE);
+                    enemy.hit(DAMAGE, targetX, targetY, 8.0, currentTick);
                 }
             }
         }

@@ -9,6 +9,7 @@ public class Dagger extends MeleeWeapon {
         super(55, 45, 18);
         this.attackAnimationLength = secondsToTicks(0.25);
         this.attackDamageDelay = secondsToTicks(0.08);
+        this.knockbackForce = 3.0;
         this.name = "Rogue Dagger";
         this.description = "Rapid close-range stab (45 deg, 55px reach). 18 DMG.";
         this.iconColor = new Color(220, 220, 100);

@@ -40,14 +40,11 @@ public class TankShieldBash extends Ability {
 
             if (dist <= PUSH_RANGE) {
                 if (dist > 0) {
-                    double nx = dx / dist;
-                    double ny = dy / dist;
-                    enemy.move((int) (nx * PUSH_DISTANCE), (int) (ny * PUSH_DISTANCE));
+                    enemy.hit(DAMAGE, playerCX, playerCY, PUSH_DISTANCE, currentTick);
                 } else {
-                    enemy.move((int) PUSH_DISTANCE, 0);
+                    enemy.hit(DAMAGE, playerCX - 1, playerCY, PUSH_DISTANCE, currentTick);
                 }
                 enemy.stun(90, currentTick);
-                enemy.hurt(DAMAGE);
             }
         }
     }

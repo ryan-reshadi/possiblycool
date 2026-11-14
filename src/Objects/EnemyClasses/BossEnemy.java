@@ -34,6 +34,16 @@ public class BossEnemy extends Enemy {
     }
 
     @Override
+    protected void lastAttackInterrupted() {
+        lastAttackTick = Math.max(lastAttackTick, interruptedUntilTick);
+    }
+
+    @Override
+    protected int getAttackCooldownTicks() {
+        return attackCooldown;
+    }
+
+    @Override
     public void draw(Graphics g) {
         g.setColor(this.color != null ? this.color : Color.RED);
         g.fillRect(this.x, this.y, this.width, this.height);

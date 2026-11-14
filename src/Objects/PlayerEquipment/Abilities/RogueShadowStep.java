@@ -45,7 +45,7 @@ public class RogueShadowStep extends Ability {
                     boolean overlapX = checkX < enemy.getX() + enemy.getWidth() && checkX + player.getWidth() > enemy.getX();
                     boolean overlapY = checkY < enemy.getY() + enemy.getHeight() && checkY + player.getHeight() > enemy.getY();
                     if (overlapX && overlapY) {
-                        enemy.hurt(DAMAGE);
+                        enemy.hit(DAMAGE, playerCX, playerCY, 5.0, currentTick);
                     }
                 }
             }

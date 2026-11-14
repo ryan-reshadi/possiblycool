@@ -34,6 +34,16 @@ public class MeleeEnemy extends Enemy {
         }
     }
 
+    @Override
+    protected void lastAttackInterrupted() {
+        lastAttackTick = Math.max(lastAttackTick, interruptedUntilTick);
+    }
+
+    @Override
+    protected int getAttackCooldownTicks() {
+        return attackCooldown;
+    }
+
     public void moveTowardsPlayer(double distance, int currentTick) {
         if (distance <= 0) return;
         double spd = getCurrentSpeed(currentTick);

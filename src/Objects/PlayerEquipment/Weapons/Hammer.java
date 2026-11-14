@@ -9,6 +9,7 @@ public class Hammer extends MeleeWeapon {
         super(90, 75, 45);
         this.attackAnimationLength = secondsToTicks(0.8);
         this.attackDamageDelay = secondsToTicks(0.35);
+        this.knockbackForce = 12.0;
         this.name = "War Hammer";
         this.description = "Devastating slow smash with high reach (75 deg, 90px reach). 45 DMG.";
         this.iconColor = new Color(139, 69, 19);

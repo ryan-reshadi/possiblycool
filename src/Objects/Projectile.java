@@ -71,7 +71,7 @@ public class Projectile extends VisualObject {
         if (enemies != null) {
             for (Enemy enemy : enemies) {
                 if (enemy != null && !enemy.isDead() && checkCollision(enemy)) {
-                    enemy.hurt(damage);
+                    enemy.hit(damage, x + width / 2, y + height / 2, 4.0, tickCount);
                     if (passives != null) {
                         for (PassiveSpell passive : passives) {
                             if (passive != null) {
