@@ -23,6 +23,7 @@ public class Game {
     private int mouseX = 0;
     private int mouseY = 0;
     private boolean isRightClick = false;
+    private final InputState inputState = new InputState();
 
     public Game() {
         this.deathOverlay = new DeathOverlay(this);
@@ -48,6 +49,7 @@ public class Game {
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int scrollDelta) {
         this.tickCount++;
+        this.inputState.update(pressedKeys);
 
         // Process menu / overlay visual objects
         for (int i = this.visualObjects.size() - 1; i >= 0; i--) {
@@ -65,7 +67,7 @@ public class Game {
         if (this.state == GameStates.LEVEL_1 && this.currentLevel != null) {
             this.currentLevel.setMousePosition(this.mouseX, this.mouseY);
             this.currentLevel.setRightClick(this.isRightClick);
-            this.currentLevel.tick(g, pressedKeys, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount, scrollDelta);
+            this.currentLevel.tick(g, pressedKeys, this.inputState, clickXDown, clickYDown, clickXUp, clickYUp, this.tickCount, scrollDelta);
 
             // Check if player died during level tick
             if (this.player != null && this.player.isDead()) {

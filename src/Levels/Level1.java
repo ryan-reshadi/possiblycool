@@ -87,9 +87,11 @@ public class Level1 extends BaseLevel {
             LootTable.item(5, HealthPotion::new)
         );
         Chest chest = new Chest(1250, 200, chestLoot, 3, items -> {
+            int lootX = 1230;
+            int lootY = 244;
             for (int i = 0; i < items.size(); i++) {
                 Item it = items.get(i);
-            queueAddVisualObject(new DroppedItem(1230 + (i * 30), 250, it, this::collectItem));
+                queueAddVisualObject(new DroppedItem(lootX + (i * 36), lootY, it, this::collectItem));
             }
         });
         queueAddVisualObject(chest);

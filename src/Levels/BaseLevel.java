@@ -12,6 +12,7 @@ import ShapeCore.AbilityBarUI;
 import ShapeCore.HotbarUI;
 import ShapeCore.InventoryPanel;
 import ShapeCore.Buttons.*;
+import GameRun.InputState;
 
 import java.awt.*;
 import java.io.File;
@@ -46,10 +47,8 @@ public class BaseLevel {
     protected int mouseY = 0;
     protected boolean isRightClick = false;
 
-    // Ability key debounces
-    private boolean qWasDown = false;
-    private boolean eWasDown = false;
-    private boolean fWasDown = false;
+    private static final int PLAYER_SCREEN_X = 950;
+    private static final int PLAYER_SCREEN_Y = 500;
 
     public BaseLevel(int bgX, int bgY, String path, ArrayList<VisualObject> players) {
         this.bgX = bgX;
@@ -79,6 +78,8 @@ public class BaseLevel {
         this.levelVisualObjects.add(new ArrayList<>());     // 4: Projectiles / Effects / DroppedItems
         if (!players.isEmpty() && players.get(0) instanceof Player) {
             this.player = (Player) players.get(0);
+            this.player.setX(PLAYER_SCREEN_X - this.player.getWidth() / 2);
+            this.player.setY(PLAYER_SCREEN_Y - this.player.getHeight() / 2);
         }
     }
 
@@ -138,6 +139,10 @@ public class BaseLevel {
     }
 
     public void tick(Graphics g, Set<Integer> pressedKeys, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, int scrollDelta) {
+        this.tick(g, pressedKeys, new InputState(), clickXDown, clickYDown, clickXUp, clickYUp, tickCount, scrollDelta);
+    }
+
+    public void tick(Graphics g, Set<Integer> pressedKeys, InputState inputState, int clickXDown, int clickYDown, int clickXUp, int clickYUp, int tickCount, int scrollDelta) {
         this.drawBG(g);
 
         if (this.player != null && !this.player.isDead()) {
@@ -157,10 +162,10 @@ public class BaseLevel {
                 this.inventoryPanel.handlePointer(clickXDown, clickYDown, clickXUp, clickYUp,
                         this.isRightClick, this.player, 1900, 1000, tickCount);
             } else {
-                this.keyHandler(pressedKeys, clickXDown, clickYDown, tickCount);
+                this.keyHandler(pressedKeys, inputState, clickXDown, clickYDown, tickCount);
                 this.mouseHandler(clickXDown, clickYDown, tickCount);
                 this.scrollHandler(scrollDelta);
-                this.checkInteractions(pressedKeys, tickCount);
+                this.checkInteractions(pressedKeys, inputState, tickCount);
             }
         }
 
@@ -189,7 +194,7 @@ public class BaseLevel {
         // Follow after movement so the camera responds to the player's current
         // position instead of chasing the previous frame's position.
         if (this.player != null && !this.player.isDead()) {
-            this.updateOffset();
+            // Player remains fixed on screen; movement scrolls the world.
         }
 
         // Draw HUD overlay
@@ -203,7 +208,7 @@ public class BaseLevel {
         this.processQueuedVisualObjectChanges();
     }
 
-    private void checkInteractions(Set<Integer> pressedKeys, int currentTick) {
+    private void checkInteractions(Set<Integer> pressedKeys, InputState inputState, int currentTick) {
         if (this.player == null) return;
 
         // Checkpoints & Chests & Dropped items
@@ -220,24 +225,18 @@ public class BaseLevel {
         }
 
         // Abilities: Q=81, E=69, F=70
-        boolean qDown = pressedKeys.contains(81);
-        if (qDown && !qWasDown) {
+        if (inputState.wasPressed(81)) {
             this.player.tryActivateAbility(0, this, currentTick, mouseX, mouseY);
         }
-        qWasDown = qDown;
 
-        boolean eDown = pressedKeys.contains(69);
-        if (eDown && !eWasDown) {
+        if (inputState.wasPressed(69)) {
             // E triggers ability 1 if not opening a chest
             this.player.tryActivateAbility(1, this, currentTick, mouseX, mouseY);
         }
-        eWasDown = eDown;
 
-        boolean fDown = pressedKeys.contains(70);
-        if (fDown && !fWasDown) {
+        if (inputState.wasPressed(70)) {
             this.player.tryActivateAbility(2, this, currentTick, mouseX, mouseY);
         }
-        fWasDown = fDown;
     }
 
     private void displayUI(Graphics g, int currentTick) {
@@ -335,7 +334,7 @@ public class BaseLevel {
         }
     }
 
-    public void keyHandler(Set<Integer> pressedKeys, int clickXDown, int clickYDown, int tickCount) {
+    public void keyHandler(Set<Integer> pressedKeys, InputState inputState, int clickXDown, int clickYDown, int tickCount) {
         if (player == null) return;
 
         int speed = (int) player.getSpeed();
@@ -343,7 +342,7 @@ public class BaseLevel {
         int moveY = 0;
 
         // Roll mechanic: R (82)
-        if (pressedKeys.contains(82) && player.rolls > 0) {
+        if (inputState.wasPressed(82) && player.rolls > 0) {
             int rollDist = 40;
             if (pressedKeys.contains(65)) moveX -= rollDist * speed;
             if (pressedKeys.contains(68)) moveX += rollDist * speed;
@@ -420,8 +419,19 @@ public class BaseLevel {
             }
         }
 
-        player.setX(finalX);
-        player.setY(finalY);
+        movePlayerInWorld(finalX - player.getX(), finalY - player.getY());
+    }
+
+    /** Apply a collision-validated player displacement to the world camera. */
+    public void movePlayerInWorld(int worldDx, int worldDy) {
+        if (player == null || (worldDx == 0 && worldDy == 0)) return;
+        int dx = -worldDx, dy = -worldDy;
+        offsetX += dx; offsetY += dy; bgX += dx; bgY += dy;
+        for (int row = 1; row < levelVisualObjects.size(); row++) {
+            for (VisualObject obj : levelVisualObjects.get(row)) {
+                if (obj != null && obj.moveable) obj.move(dx, dy);
+            }
+        }
     }
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
