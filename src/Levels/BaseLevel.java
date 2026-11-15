@@ -4,18 +4,24 @@ import Objects.*;
 import Objects.Projectile;
 import Objects.EnemyClasses.*;
 import Objects.PlayerClasses.Player;
-import Objects.PlayerEquipment.*;
+import Objects.PlayerEquipment.Consumable;
+import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.MeleeWeapon;
 import Objects.PlayerEquipment.Armor.ArmorSlot;
 import Objects.PlayerEquipment.Weapons.Dagger;
 import Objects.PlayerEquipment.Weapons.Wand;
 import Objects.Terrain.*;
+import Objects.Effects.RallyBarricade;
+import Objects.PlayerEquipment.Ultimate;
 import ShapeCore.AbilityBarUI;
+import ShapeCore.UltimateBarUI;
 import ShapeCore.HotbarUI;
 import ShapeCore.InventoryPanel;
 import ShapeCore.Buttons.*;
 import GameRun.InputFrame;
 import GameRun.AssetLoader;
 import GameRun.Viewport;
+import GameRun.Game;
 
 import java.awt.*;
 import java.util.*;
@@ -41,7 +47,9 @@ public class BaseLevel {
     // UI Systems
     protected HotbarUI hotbarUI = new HotbarUI();
     protected AbilityBarUI abilityBarUI = new AbilityBarUI();
+    protected UltimateBarUI ultimateBarUI = new UltimateBarUI();
     protected InventoryPanel inventoryPanel = new InventoryPanel();
+    protected Runnable progressSaveListener = () -> { };
 
     protected int mouseX = 0;
     protected int mouseY = 0;
@@ -68,6 +76,9 @@ public class BaseLevel {
         if (!players.isEmpty() && players.get(0) instanceof Player) {
             this.player = (Player) players.get(0);
         }
+        this.inventoryPanel.setChangeListener(() -> {
+            if (this.player != null) this.progressSaveListener.run();
+        });
     }
 
     public List<Enemy> getEnemies() {
@@ -102,7 +113,37 @@ public class BaseLevel {
     }
 
     public void collectItem(Item item) {
+        if (item instanceof Ultimate && player != null) {
+            Ultimate incoming = (Ultimate) item;
+            if ((player.getUltimate() != null && player.getUltimate().getId().equals(incoming.getId()))
+                    || inventoryPanel.getStorage().stream().filter(Ultimate.class::isInstance)
+                    .map(Ultimate.class::cast).anyMatch(existing -> existing.getId().equals(incoming.getId()))) return;
+        }
+        if (player != null && item instanceof Consumable) {
+            player.mergeIntoHotbar((Consumable) item);
+            if (((Consumable) item).isUsed()) return;
+        }
         this.inventoryPanel.addItem(item);
+        progressSaveListener.run();
+    }
+
+    public void setProgressSaveListener(Runnable listener) {
+        progressSaveListener = listener == null ? () -> { } : listener;
+        inventoryPanel.setChangeListener(() -> {
+            if (player != null) progressSaveListener.run();
+        });
+    }
+
+    public void setCoinWallet(java.util.function.IntSupplier balance, java.util.function.IntConsumer reward) {
+        inventoryPanel.setCoinWallet(balance, reward);
+    }
+
+    public List<Item> getStoredItems() {
+        return inventoryPanel.getStorage();
+    }
+
+    public void setStoredItems(List<Item> items) {
+        inventoryPanel.setStoredItems(items);
     }
 
     public void processQueuedVisualObjectChanges() {
@@ -139,9 +180,11 @@ public class BaseLevel {
                 this.inventoryPanel.handlePointer(input.getClickXDown(), input.getClickYDown(),
                         input.getClickXUp(), input.getClickYUp(), input.isRightClick(),
                         this.player, Viewport.WIDTH, Viewport.HEIGHT, tickCount);
+                this.progressSaveListener.run();
             } else {
                 this.keyHandler(input, tickCount);
                 this.scrollHandler(input.getScrollDelta());
+                if (input.getScrollDelta() != 0) this.progressSaveListener.run();
                 boolean openedChest = this.checkInteractions(input, tickCount);
                 if (!openedChest && input.hasMousePress()) {
                     this.mouseHandler(input.getClickXDown() + cameraX,
@@ -233,6 +276,9 @@ public class BaseLevel {
         if (input.wasPressed(70)) {
             this.player.tryActivateAbility(2, this, currentTick, mouseX + cameraX, mouseY + cameraY);
         }
+        if (input.wasPressed(82)) {
+            this.player.tryActivateUltimate(this, currentTick, mouseX + cameraX, mouseY + cameraY);
+        }
         return openedChest;
     }
 
@@ -275,10 +321,10 @@ public class BaseLevel {
 
         // Rolls indicator pips
         int rollX = hx;
-        int rollY = hy + 24;
+        int rollY = hy - 30;
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 11));
         g2d.setColor(new Color(200, 200, 220));
-        g2d.drawString("Rolls [R]:", rollX, rollY);
+        g2d.drawString("Rolls [Space]:", rollX, rollY);
         for (int r = 0; r < player.maxRolls; r++) {
             int rx = rollX + 55 + r * 16;
             if (r < player.rolls) {
@@ -292,6 +338,7 @@ public class BaseLevel {
 
         // 2. Ability Bar (Q, E, F)
         abilityBarUI.draw(g, player.getAbilitySlots(), currentTick, Viewport.WIDTH, Viewport.HEIGHT);
+        ultimateBarUI.draw(g, player.getUltimate(), player.getUltimateCharge(), Viewport.WIDTH, Viewport.HEIGHT);
 
         // 3. Hotbar (1-9)
         hotbarUI.draw(g, player.getInventory(), player.getMainHandIndex(), Viewport.WIDTH, Viewport.HEIGHT);
@@ -376,8 +423,8 @@ public class BaseLevel {
         int moveX = 0;
         int moveY = 0;
 
-        // Roll mechanic: R (82)
-        if (input.wasPressed(82) && player.rolls > 0) {
+        // Roll mechanic: Space (32)
+        if (input.wasPressed(32) && player.rolls > 0) {
             int rollDist = 40;
             if (pressedKeys.contains(65)) moveX -= rollDist * speed;
             if (pressedKeys.contains(68)) moveX += rollDist * speed;
@@ -492,6 +539,7 @@ public class BaseLevel {
 
         for (VisualObject object : levelVisualObjects.get(1)) {
             if (!(object instanceof Border)) continue;
+            if (object instanceof RallyBarricade) continue;
             if (object instanceof BossDoor && !((BossDoor) object).isLocked()) continue;
 
             Border border = (Border) object;

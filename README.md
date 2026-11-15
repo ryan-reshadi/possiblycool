@@ -17,16 +17,17 @@ java -jar target/dungeon-crawler-1.0.0.jar
 ```
 
 Images are bundled as classpath resources, so the application can be launched from a working directory other than the repository root.
-For IDE or class-directory launches such as `java -cp bin GameRun.App`, run from the repository root so the `images` directory is available; the asset loader checks the classpath first, then that working directory.
+For class-directory launches, run `mvn compile` first, then launch with `java -cp target/classes GameRun.App`. This uses the same output directory as Maven and Eclipse instead of potentially stale classes in `bin`. When running from an IDE, use the project's Maven classpath.
 
-Defeating Level 1's boss completes the tutorial and unlocks the level selector from the main menu. The unlock is saved between runs; levels without a registered implementation are shown as locked.
+Choose a hero to begin a generated branching run. The tutorial is the first route node, followed by combat rooms, occasional shops, and a final boss. Progress, class loadouts, coins, route choices, and shop stock are saved locally per character in `~/.possiblycool/player-progress.json`. Leaving during a combat room lets you replay that room; defeat ends the run while preserving profile progress. Shops sell class-specific gear and powers, and right-clicking items in the inventory salvages them for coins.
 
 The test suite is headless and runs during `mvn clean verify`. Continuous integration verifies the build on Windows, macOS, and Linux.
 
 ## Controls
 
 - `W`, `A`, `S`, `D`: move
-- `R`: roll
+- `Space`: roll
+- `R`: activate the ultimate when charged
 - `Q`, `E`, `F`: use ability slots
 - `I`: open or close inventory
 - `1`-`9` or the mouse wheel: select a hotbar item

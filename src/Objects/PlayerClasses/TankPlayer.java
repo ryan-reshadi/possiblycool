@@ -2,6 +2,7 @@ package Objects.PlayerClasses;
 
 import Objects.PlayerEquipment.Abilities.TankShieldBash;
 import Objects.PlayerEquipment.TankSword;
+import Objects.PlayerEquipment.Ultimate;
 
 public class TankPlayer extends Player {
 
@@ -20,5 +21,6 @@ public class TankPlayer extends Player {
         this.inventory[0] = new TankSword();
         this.MainHandIndex = 0;
         this.abilitySlots[0] = new TankShieldBash();
+        setUltimate(new Ultimate(Ultimate.defaultFor(this)));
     }
 }

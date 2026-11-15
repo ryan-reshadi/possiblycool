@@ -11,32 +11,29 @@ import java.awt.*;
 public class DeathOverlay {
 
     private final Game game;
-    private final Button respawnButton;
+    private final Button endRunButton;
     private final Button quitButton;
 
     public DeathOverlay(Game game) {
         this.game = game;
 
-        this.respawnButton = new Button(850, 480, 200, 50, "Respawn", new Color(46, 139, 87), game) {
+        this.endRunButton = new Button(850, 480, 200, 50, "End Run", new Color(46, 139, 87), game) {
             @Override
             public void buttonAction() {
-                if (game.player != null) {
-                    game.player.respawnAtCheckpoint(400, 300);
-                    game.changeState(GameStates.LEVEL_1);
-                }
+                game.endRunAfterDeath();
             }
         };
 
         this.quitButton = new Button(850, 550, 200, 50, "Main Menu", new Color(178, 34, 34), game) {
             @Override
             public void buttonAction() {
-                game.changeState(GameStates.INITIALIZED_1);
+                game.endRunAfterDeath();
             }
         };
     }
 
     public void update(InputFrame input, int tickCount) {
-        respawnButton.update(input, tickCount);
+        endRunButton.update(input, tickCount);
         quitButton.update(input, tickCount);
     }
 
@@ -64,7 +61,7 @@ public class DeathOverlay {
         int sx = (screenWidth - fm.stringWidth(sub)) / 2;
         g.drawString(sub, sx, 430);
 
-        respawnButton.render(g, 0);
+        endRunButton.render(g, 0);
         quitButton.render(g, 0);
     }
 }

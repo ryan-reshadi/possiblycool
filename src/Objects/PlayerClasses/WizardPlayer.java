@@ -2,6 +2,7 @@ package Objects.PlayerClasses;
 
 import Objects.PlayerEquipment.Abilities.WizardArcaneBurst;
 import Objects.PlayerEquipment.Weapons.BasicWand;
+import Objects.PlayerEquipment.Ultimate;
 
 public class WizardPlayer extends Player {
 
@@ -20,5 +21,6 @@ public class WizardPlayer extends Player {
         this.inventory[0] = new BasicWand();
         this.MainHandIndex = 0;
         this.abilitySlots[0] = new WizardArcaneBurst();
+        setUltimate(new Ultimate(Ultimate.defaultFor(this)));
     }
 }

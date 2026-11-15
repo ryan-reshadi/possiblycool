@@ -38,6 +38,9 @@ public class MeleeEnemy extends Enemy {
     @Override
     protected void lastAttackInterrupted() {
         lastAttackTick = Math.max(lastAttackTick, interruptedUntilTick);
+        if (weapon instanceof TankWeapon) {
+            ((TankWeapon) weapon).cancelAttack();
+        }
     }
 
     @Override

@@ -2,6 +2,7 @@ package Objects.PlayerClasses;
 
 import Objects.PlayerEquipment.Abilities.RogueShadowStep;
 import Objects.PlayerEquipment.Weapons.Dagger;
+import Objects.PlayerEquipment.Ultimate;
 
 public class RoguePlayer extends Player {
 
@@ -19,5 +20,6 @@ public class RoguePlayer extends Player {
         this.inventory[0] = new Dagger();
         this.MainHandIndex = 0;
         this.abilitySlots[0] = new RogueShadowStep();
+        setUltimate(new Ultimate(Ultimate.defaultFor(this)));
     }
 }

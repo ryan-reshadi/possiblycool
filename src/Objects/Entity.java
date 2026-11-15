@@ -135,7 +135,9 @@ public abstract class Entity extends VisualObject {
     public void setAttackAngle(int attackAngle) { this.attackAngle = attackAngle; }
     public void setHitbox(Rectangle2D hitbox) { this.hitbox = hitbox; }
     public void setInventory(Item[] inventory) { this.inventory = inventory; }
-    public void setMainHandIndex(int mainHandIndex) { this.MainHandIndex = mainHandIndex; }
+    public void setMainHandIndex(int mainHandIndex) {
+        this.MainHandIndex = Math.max(0, Math.min(inventory.length - 1, mainHandIndex));
+    }
     public void setTotalArmorReduction(double reduction) {
         this.totalArmorReduction = Math.max(0.0, Math.min(0.75, reduction)); // hard cap at 75%
     }

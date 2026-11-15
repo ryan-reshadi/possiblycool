@@ -5,7 +5,7 @@ import Objects.EnemyClasses.BossEnemy;
 import Objects.EnemyClasses.Enemy;
 import Objects.EnemyClasses.MeleeEnemy;
 import Objects.EnemyClasses.BerserkerWeapon;
-import Objects.EnemyClasses.TankWeapon;
+import Objects.EnemyClasses.TankEnemySword;
 import Objects.EnemyClasses.RangedWeapon;
 import Objects.PlayerClasses.Player;
 import Objects.PlayerEquipment.HealthPotion;
@@ -160,7 +160,7 @@ public class Level1 extends BaseLevel {
 
     private void spawnLootEnemy(int x, int y, LootTable lootTable) {
         MeleeEnemy e = new MeleeEnemy(x, y);
-        e.setWeapon(new TankWeapon());
+        e.setWeapon(new TankEnemySword());
         e.setOnDeath(() -> {
             if (lootTable != null) {
                 List<Item> drops = lootTable.roll(player, 1);

@@ -8,6 +8,7 @@ import Objects.PlayerEquipment.ArmorSet;
 import Objects.PlayerEquipment.Consumable;
 import Objects.PlayerEquipment.Item;
 import Objects.PlayerEquipment.MeleeWeapon;
+import Objects.PlayerEquipment.Ultimate;
 import Objects.PlayerEquipment.Weapons.Wand;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -29,6 +30,11 @@ public class Player extends Entity {
 
     // ── Passive ability slots ──────────────────────────────────────────────
     public Ability[] passiveSlots = new Ability[2];
+
+    private Ultimate ultimate;
+    private double ultimateCharge;
+    private double ultimateGuardReduction;
+    private int ultimateGuardExpiresAt = -1;
 
     // ── Roll system ────────────────────────────────────────────────────────
     protected double rollSpeed = 1.0;
@@ -79,6 +85,7 @@ public class Player extends Entity {
         ArmorSet activeSet = getActiveArmorSet();
         int nextSpeedBonus = activeSet == null ? 0 : activeSet.getBonusMovementSpeed();
         total += activeSet == null ? 0.0 : activeSet.getBonusArmorReduction();
+        total += ultimateGuardReduction;
         this.speed = (int) Math.round(this.speed - armorSetSpeedBonus + nextSpeedBonus);
         armorSetSpeedBonus = nextSpeedBonus;
         armorSetSpellDamageBonus = activeSet == null ? 0.0 : activeSet.getBonusSpellDamage();
@@ -115,7 +122,7 @@ public class Player extends Entity {
     }
 
     public boolean addToHotbar(Item item) {
-        if (item == null) {
+        if (item == null || item instanceof Ultimate) {
             return false;
         }
         if (item instanceof Consumable) {
@@ -123,14 +130,8 @@ public class Player extends Entity {
             if (incoming.isUsed()) {
                 return false;
             }
-            for (Item existing : inventory) {
-                if (existing instanceof Consumable) {
-                    ((Consumable) existing).mergeFrom(incoming);
-                    if (incoming.isUsed()) {
-                        return true;
-                    }
-                }
-            }
+            mergeIntoHotbar(incoming);
+            if (incoming.isUsed()) return true;
         }
         for (int i = 0; i < inventory.length; i++) {
             if (inventory[i] == null) {
@@ -139,6 +140,16 @@ public class Player extends Entity {
             }
         }
         return false;
+    }
+
+    public void mergeIntoHotbar(Consumable incoming) {
+        if (incoming == null || incoming.isUsed()) return;
+        for (Item existing : inventory) {
+            if (existing instanceof Consumable) {
+                ((Consumable) existing).mergeFrom(incoming);
+                if (incoming.isUsed()) return;
+            }
+        }
     }
 
     public boolean addAbility(Ability a) {
@@ -181,7 +192,15 @@ public class Player extends Entity {
 
         MeleeWeapon weapon = getEquippedMeleeWeapon();
         if (weapon != null) {
+            weapon.setOwner(this);
             weapon.updateAttackAnimation();
+        }
+
+        ultimateCharge = Math.min(100.0, ultimateCharge + (100.0 / 6000.0));
+        if (ultimateGuardExpiresAt != -1 && currentTick >= ultimateGuardExpiresAt) {
+            ultimateGuardExpiresAt = -1;
+            ultimateGuardReduction = 0.0;
+            recalcArmorReduction();
         }
 
         this.hitbox.setRect(this.x, this.y, this.width, this.height);
@@ -252,6 +271,41 @@ public class Player extends Entity {
             a.setTarget(targetX, targetY);
             a.activate(this, level, currentTick);
         }
+    }
+
+    public Ultimate getUltimate() { return ultimate; }
+
+    public double getUltimateCharge() { return ultimateCharge; }
+
+    public void setUltimate(Ultimate next) {
+        if (next != null && !next.canBeUsedBy(this)) return;
+        if (ultimate == next || (ultimate != null && next != null && ultimate.getId().equals(next.getId()))) return;
+        ultimate = next;
+        ultimateCharge = 0.0;
+    }
+
+    public void chargeUltimateForDamage(int damage) {
+        if (damage > 0 && ultimate != null) ultimateCharge = Math.min(100.0, ultimateCharge + damage * 0.1);
+    }
+
+    public boolean tryActivateUltimate(Levels.BaseLevel level, int currentTick, int targetX, int targetY) {
+        if (ultimate == null || ultimateCharge < 100.0) return false;
+        ultimateCharge = 0.0;
+        ultimate.activate(this, level, currentTick, targetX, targetY);
+        return true;
+    }
+
+    public void grantUltimateGuard(int currentTick, int durationTicks, double reduction) {
+        ultimateGuardReduction = Math.max(ultimateGuardReduction, reduction);
+        ultimateGuardExpiresAt = Math.max(ultimateGuardExpiresAt, currentTick + durationTicks);
+        recalcArmorReduction();
+    }
+
+    @Override
+    public void hurt(int damage) {
+        int before = health;
+        super.hurt(damage);
+        chargeUltimateForDamage(before - health);
     }
 
     // ── Visual ──────────────────────────────────────────────────────────────

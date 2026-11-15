@@ -8,6 +8,7 @@ import ShapeCore.DeathOverlay;
 import ShapeCore.Buttons.Button;
 import ShapeCore.Buttons.LevelSelectButton;
 import ShapeCore.Buttons.LevelSelectorButton;
+import GameRun.WinScreen;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -15,6 +16,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
+import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.Ultimate;
 
 public class Game {
     private int tickCount;
@@ -25,7 +29,11 @@ public class Game {
     private final ArrayList<VisualObject> toRemove = new ArrayList<>();
     private BaseLevel currentLevel;
     private final DeathOverlay deathOverlay;
+    private WinScreen winScreen;
     private final ProgressionStore progressionStore;
+    private RunRoute runRoute;
+    private final RouteMapScreen routeMapScreen = new RouteMapScreen(this);
+    private final ShopScreen shopScreen = new ShopScreen(this);
     private final List<LevelDefinition> levelDefinitions = Arrays.asList(
             LevelDefinition.playable("level-1", "Level 1 - Tutorial",
                     player -> new Level1(0, 0, player)),
@@ -38,6 +46,7 @@ public class Game {
 
     Game(ProgressionStore progressionStore) {
         this.progressionStore = Objects.requireNonNull(progressionStore, "progressionStore");
+        this.progressionStore.importLegacyLevelSelectorUnlock();
         this.deathOverlay = new DeathOverlay(this);
         changeState(GameStates.INITIALIZED_1);
         applyQueuedVisualObjectChanges();
@@ -53,6 +62,10 @@ public class Game {
 
     public BaseLevel getCurrentLevel() {
         return currentLevel;
+    }
+
+    public Player getPlayer() {
+        return player;
     }
 
     public boolean isLevelSelectorUnlocked() {
@@ -87,8 +100,125 @@ public class Game {
         if (player == null) {
             throw new IllegalStateException("Choose a hero before starting a level.");
         }
+        Map<String, Object> savedRun = progressionStore.getRunState(player);
+        runRoute = RunRoute.fromData(savedRun);
+        if (runRoute == null) {
+            runRoute = RunRoute.generate(RunRoute.DEFAULT_STAGES, System.nanoTime());
+            progressionStore.saveRunState(player, runRoute.toData());
+        } else if (runRoute.getPendingNode() != null
+                && runRoute.getPendingNode().type != RunRoute.Type.SHOP) {
+            runRoute.interrupted();
+            progressionStore.saveRunState(player, runRoute.toData());
+        }
         currentLevel = null;
-        changeState(GameStates.LEVEL_1);
+        if (runRoute.getPendingNode() != null && runRoute.getPendingNode().type == RunRoute.Type.SHOP) {
+            shopScreen.ensureStock(runRoute.getPendingNode());
+            changeState(GameStates.SHOP);
+        } else {
+            changeState(GameStates.ROUTE_MAP);
+        }
+    }
+
+    public void selectPlayer(Player selectedPlayer) {
+        this.player = Objects.requireNonNull(selectedPlayer, "selectedPlayer");
+        progressionStore.restorePlayer(this.player);
+    }
+
+    public void savePlayerProgress() {
+        if (player != null) {
+            if (currentLevel != null) progressionStore.savePlayer(player, currentLevel.getStoredItems());
+            else progressionStore.savePlayer(player);
+        }
+    }
+
+    public void savePlayerInventory() {
+        savePlayerProgress();
+    }
+
+    public int getPlayerCoins() {
+        return player == null ? 0 : progressionStore.getCoins(player);
+    }
+
+    public int addPlayerCoins(int amount) {
+        if (player == null) throw new IllegalStateException("Choose a hero before earning coins.");
+        return progressionStore.addCoins(player, amount);
+    }
+
+    public RunRoute getRunRoute() { return runRoute; }
+
+    public boolean ownsUltimate(String id) {
+        return player != null && progressionStore.ownsUltimate(player, id);
+    }
+
+    public void enterRouteNode(String nodeId) {
+        if (state != GameStates.ROUTE_MAP || runRoute == null || !runRoute.enter(nodeId)) return;
+        RunRoute.Node node = runRoute.getPendingNode();
+        progressionStore.saveRunState(player, runRoute.toData());
+        currentLevel = null;
+        if (node.type == RunRoute.Type.SHOP) {
+            shopScreen.ensureStock(node);
+            progressionStore.saveRunState(player, runRoute.toData());
+            changeState(GameStates.SHOP);
+        } else {
+            changeState(GameStates.LEVEL_1);
+        }
+    }
+
+    public void buyShopOffer(RunRoute.Node node, Map<String, Object> offer) {
+        if (node == null || offer == null || state != GameStates.SHOP || runRoute == null
+                || node != runRoute.getPendingNode()) return;
+        String offerId = String.valueOf(offer.get("offerId"));
+        if (node.purchased.contains(offerId)) return;
+        int price = offer.get("price") instanceof Number ? ((Number) offer.get("price")).intValue() : Integer.MAX_VALUE;
+        boolean bought = false;
+        if ("ultimate".equals(offer.get("type"))) {
+            Ultimate power = Ultimate.forId(offer.get("id") instanceof String ? (String) offer.get("id") : null);
+            if (power != null) bought = progressionStore.purchaseUltimate(player, power.getType(), price);
+        } else {
+            Item item = ProgressionStore.deserializeShopItem(offer);
+            if (item != null) bought = progressionStore.purchaseItem(player, item, price);
+        }
+        if (bought) {
+            node.purchased.add(offerId);
+            progressionStore.savePlayer(player, progressionStore.getStoredItems(player));
+            progressionStore.saveRunState(player, runRoute.toData());
+        }
+    }
+
+    public void leaveShop(RunRoute.Node node) {
+        if (state != GameStates.SHOP || runRoute == null || node != runRoute.getPendingNode()) return;
+        runRoute.completePendingNode();
+        progressionStore.saveRunState(player, runRoute.toData());
+        changeState(GameStates.ROUTE_MAP);
+    }
+
+    public void continueAfterReward(Item item) {
+        if (item != null && player != null) {
+            if (!player.addToHotbar(item) && currentLevel != null) currentLevel.collectItem(item);
+        }
+        savePlayerProgress();
+        RunRoute.Node completed = runRoute == null ? null : runRoute.getPendingNode();
+        if (completed != null && completed.type == RunRoute.Type.BOSS) {
+            progressionStore.clearRunState(player);
+            runRoute = null;
+            currentLevel = null;
+            changeState(GameStates.INITIALIZED_1);
+            return;
+        }
+        if (completed != null) runRoute.completePendingNode();
+        currentLevel = null;
+        progressionStore.saveRunState(player, runRoute == null ? null : runRoute.toData());
+        changeState(GameStates.ROUTE_MAP);
+    }
+
+    public void endRunAfterDeath() {
+        if (player != null) {
+            savePlayerProgress();
+            progressionStore.clearRunState(player);
+        }
+        runRoute = null;
+        currentLevel = null;
+        changeState(GameStates.INITIALIZED_1);
     }
 
     public void update(InputFrame input) {
@@ -107,14 +237,31 @@ public class Game {
         if (state == GameStates.LEVEL_1 && currentLevel != null) {
             currentLevel.update(input, tickCount);
             if (player != null && player.isDead()) {
+                savePlayerProgress();
+                progressionStore.clearRunState(player);
+                runRoute = null;
                 changeState(GameStates.PLAYER_DEAD);
             } else if (currentLevel.isComplete()) {
-                progressionStore.unlockLevelSelector();
-                changeState(GameStates.INITIALIZED_1);
+                RunRoute.Node completed = runRoute == null ? null : runRoute.getPendingNode();
+                if (completed != null) {
+                    String levelId = completed.type == RunRoute.Type.TUTORIAL ? "level-1" : completed.id;
+                    progressionStore.completeLevel(player, levelId);
+                }
+                changeState(GameStates.WIN_SCREEN);
             }
+        }
+        if (state == GameStates.ROUTE_MAP) routeMapScreen.update(input);
+        if (state == GameStates.SHOP && runRoute != null && runRoute.getPendingNode() != null) {
+            shopScreen.update(input, runRoute.getPendingNode());
         }
         if (state == GameStates.PLAYER_DEAD) {
             deathOverlay.update(input, tickCount);
+        }
+        if (state == GameStates.WIN_SCREEN && winScreen != null) {
+            winScreen.update(input, tickCount);
+            if (winScreen.isRewardClaimed() && input.wasPressed(10)) { // ENTER key
+                winScreen.handleContinue();
+            }
         }
     }
 
@@ -141,8 +288,17 @@ public class Game {
                 g.drawString("SELECT A LEVEL", 760, 250);
                 renderMenuObjects(g);
                 break;
+            case ROUTE_MAP:
+                routeMapScreen.render(g);
+                break;
+            case SHOP:
+                if (runRoute != null && runRoute.getPendingNode() != null) shopScreen.render(g, runRoute.getPendingNode());
+                break;
             case LEVEL_1:
                 if (currentLevel != null) currentLevel.render(g, tickCount);
+                break;
+            case WIN_SCREEN:
+                if (winScreen != null) winScreen.render(g, tickCount);
                 break;
             case PLAYER_DEAD:
                 deathOverlay.render(g);
@@ -166,8 +322,14 @@ public class Game {
                 return new Color(25, 28, 36);
             case LEVEL_SELECT:
                 return new Color(25, 28, 36);
+            case ROUTE_MAP:
+                return new Color(18, 20, 29);
+            case SHOP:
+                return new Color(24, 22, 25);
             case LEVEL_1:
                 return new Color(20, 20, 20);
+            case WIN_SCREEN:
+                return new Color(20, 25, 35);
             case PLAYER_DEAD:
                 return new Color(20, 0, 0);
             default:
@@ -186,15 +348,17 @@ public class Game {
         if (newState == GameStates.LEVEL_SELECT && !isLevelSelectorUnlocked()) {
             throw new IllegalStateException("The level selector is not unlocked.");
         }
+        if (newState == GameStates.INITIALIZED_1 && state != GameStates.INITIALIZED_1) {
+            savePlayerProgress();
+            this.currentLevel = null;
+        }
+        if (newState == GameStates.GAME_STARTED_0 && player != null) savePlayerProgress();
         this.state = newState;
         this.toRemove.addAll(this.visualObjects);
 
         switch (this.state) {
             case INITIALIZED_1:
                 this.toAdd.add(new ShapeCore.Buttons.StartButton(800, 410, 300, 80, this));
-                if (isLevelSelectorUnlocked()) {
-                    this.toAdd.add(new LevelSelectorButton(800, 510, 300, 80, this));
-                }
                 break;
             case GAME_STARTED_0:
                 this.toAdd.add(new ShapeCore.Buttons.ClassSelectionButtons.RogueButton(600, 400, 180, 80, this));
@@ -216,10 +380,23 @@ public class Game {
                 break;
             case LEVEL_1:
                 if (this.currentLevel == null || this.player == null || this.player.checkpointX < 0) {
-                    this.currentLevel = createSelectedLevel();
+                    RunRoute.Node node = runRoute == null ? null : runRoute.getPendingNode();
+                    if (node == null) throw new IllegalStateException("No route node is selected.");
+                    if (node.type == RunRoute.Type.TUTORIAL) this.currentLevel = new Level1(0, 0, player);
+                    else if (node.type == RunRoute.Type.BOSS) this.currentLevel = new Levels.RunBossRoom(player, runRoute.getStageCount());
+                    else this.currentLevel = new Levels.RunCombatRoom(player, node.stage, runRoute.getSeed() ^ node.id.hashCode());
+                    this.currentLevel.setProgressSaveListener(this::savePlayerProgress);
+                    this.currentLevel.setCoinWallet(this::getPlayerCoins, this::addPlayerCoins);
+                    progressionStore.restorePlayer(this.player);
+                    this.currentLevel.setStoredItems(progressionStore.getStoredItems(this.player));
+                    this.currentLevel.setProgressSaveListener(this::savePlayerProgress);
+                    this.currentLevel.setCoinWallet(this::getPlayerCoins, this::addPlayerCoins);
                 } else {
                     this.player.respawnAtCheckpoint(400, 300);
                 }
+                break;
+            case WIN_SCREEN:
+                this.winScreen = new WinScreen(this);
                 break;
             case PLAYER_DEAD:
                 break;

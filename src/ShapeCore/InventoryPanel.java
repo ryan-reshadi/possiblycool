@@ -2,14 +2,23 @@ package ShapeCore;
 
 import GameRun.AssetLoader;
 import Objects.PlayerClasses.Player;
-import Objects.PlayerEquipment.*;
+import GameRun.Game;
+import Objects.PlayerEquipment.Ability;
+import Objects.PlayerEquipment.Armor;
+import Objects.PlayerEquipment.ArmorSet;
+import Objects.PlayerEquipment.Consumable;
+import Objects.PlayerEquipment.Item;
+import Objects.PlayerEquipment.MeleeWeapon;
+import Objects.PlayerEquipment.PlayerWeapon;
+import Objects.PlayerEquipment.Ultimate;
 import Objects.PlayerEquipment.Armor.ArmorSlot;
-import Objects.PlayerEquipment.Weapons.Hammer;
 import Objects.PlayerEquipment.Weapons.Wand;
 
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 
 public class InventoryPanel {
 
@@ -18,7 +27,8 @@ public class InventoryPanel {
         WEAPONS("Weapons"),
         ARMOR("Armor"),
         ABILITIES("Abilities"),
-        CONSUMABLES("Consumables");
+        CONSUMABLES("Consumables"),
+        ULTIMATES("Ultimates");
 
         final String label;
         Tab(String label) { this.label = label; }
@@ -27,9 +37,13 @@ public class InventoryPanel {
     private final List<Item> storage = new ArrayList<>();
     private final List<Ability> abilityStorage = new ArrayList<>();
     private Tab currentTab = Tab.ALL;
+    private int storagePage;
     private Object draggedObject;
     private int dragStartX;
     private int dragStartY;
+    private Runnable changeListener = () -> { };
+    private IntSupplier coinBalance = () -> 0;
+    private IntConsumer coinReward = amount -> { };
 
     public InventoryPanel() {
     }
@@ -41,6 +55,22 @@ public class InventoryPanel {
     public List<Ability> getAbilityStorage() {
         return abilityStorage;
     }
+
+    public void setChangeListener(Runnable changeListener) {
+        this.changeListener = changeListener == null ? () -> { } : changeListener;
+    }
+
+    public void setCoinWallet(IntSupplier coinBalance, IntConsumer coinReward) {
+        this.coinBalance = coinBalance == null ? () -> 0 : coinBalance;
+        this.coinReward = coinReward == null ? amount -> { } : coinReward;
+    }
+
+    public void setStoredItems(List<Item> items) {
+        storage.clear();
+        if (items != null) storage.addAll(items);
+    }
+
+    private void notifyChanged() { changeListener.run(); }
 
     public void addItem(Item item) {
         if (item == null) return;
@@ -55,6 +85,7 @@ public class InventoryPanel {
             }
         }
         storage.add(item);
+        notifyChanged();
     }
 
     public void addAbility(Ability ability) {
@@ -93,6 +124,8 @@ public class InventoryPanel {
         g2d.setFont(new Font("SansSerif", Font.BOLD, 19));
         g2d.setColor(new Color(245, 245, 255));
         g2d.drawString("HERO LOADOUT & INVENTORY", px + 24, py + 36);
+        g2d.setColor(new Color(255, 215, 0));
+        g2d.drawString("COINS: " + coinBalance.getAsInt(), px + 690, py + 36);
 
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 12));
         g2d.setColor(new Color(175, 180, 200));
@@ -154,7 +187,7 @@ public class InventoryPanel {
             if (Math.hypot(upX - dragStartX, upY - dragStartY) < 8) {
                 handleClick(dragStartX, dragStartY, false, player, screenWidth, screenHeight, currentTick);
             } else if (target >= 0 && source instanceof Item) {
-                moveToHotbar((Item) source, target, player);
+                if (!(source instanceof Ultimate)) moveToHotbar((Item) source, target, player);
             } else if (isStoragePoint(upX, upY, screenWidth, screenHeight)) {
                 if (source instanceof Item) moveToStorage((Item) source, player);
                 else if (source instanceof Ability) moveToAbilityStorage((Ability) source, player);
@@ -170,6 +203,8 @@ public class InventoryPanel {
                 removeFromInventory(source, player);
                 player.equipBody((Armor) source);
                 if (old != null) addObjectToStorage(old);
+            } else if (isUltimateSlot(upX, upY, screenWidth, screenHeight) && source instanceof Ultimate) {
+                equipUltimate((Ultimate) source, player);
             } else if (isAbilitySlot(upX, upY, screenWidth, screenHeight) && source instanceof Ability) {
                 int slot = abilitySlotAt(upX, upY, screenWidth, screenHeight);
                 Ability[] slots = player.getAbilitySlots();
@@ -178,6 +213,7 @@ public class InventoryPanel {
                 slots[slot] = (Ability) source;
                 if (old != null) addObjectToStorage(old);
             }
+            notifyChanged();
             draggedObject = null;
         }
     }
@@ -190,6 +226,7 @@ public class InventoryPanel {
         if (isHeadSlot(x, y, sw, sh)) return player.getHeadArmor();
         if (isBodySlot(x, y, sw, sh)) return player.getBodyArmor();
         if (isAbilitySlot(x, y, sw, sh)) return player.getAbilitySlots()[abilitySlotAt(x, y, sw, sh)];
+        // The equipped ultimate remains active and may only be replaced by another ultimate item.
         int gx = px + 315, gy = py + 115, slotW = 54, pad = 8;
         if (x >= gx && x < gx + 5 * (slotW + pad) && y >= gy && y < gy + 4 * (slotW + pad)) {
             int col = (x - gx) / (slotW + pad), row = (y - gy) / (slotW + pad);
@@ -222,6 +259,10 @@ public class InventoryPanel {
         int px = (sw - 840) / 2, py = (sh - 560) / 2;
         return x >= px + 89 && x <= px + 139 && y >= py + 83 && y <= py + 133;
     }
+    private boolean isUltimateSlot(int x, int y, int sw, int sh) {
+        int px = (sw - 840) / 2, py = (sh - 560) / 2;
+        return x >= px + 140 && x <= px + 190 && y >= py + 271 && y <= py + 321;
+    }
     private boolean isAbilitySlot(int x, int y, int sw, int sh) { return abilitySlotAt(x, y, sw, sh) >= 0; }
     private int abilitySlotAt(int x, int y, int sw, int sh) {
         int px = (sw - 840) / 2, py = (sh - 560) / 2;
@@ -246,6 +287,7 @@ public class InventoryPanel {
         else if (object instanceof Ability) abilityStorage.add((Ability) object);
     }
     private void moveToHotbar(Item item, int index, Player player) {
+        if (item instanceof Ultimate) return;
         Item[] items = player.getInventory();
         Item displaced = items[index];
         if (item == displaced) return;
@@ -254,14 +296,26 @@ public class InventoryPanel {
             removeFromInventory(item, player);
             ((Consumable) displaced).mergeFrom((Consumable) item);
             if (!((Consumable) item).isUsed()) addItem(item);
+            notifyChanged();
             return;
         }
         removeFromInventory(item, player);
         items[index] = item;
         if (displaced != null && displaced != item) addObjectToStorage(displaced);
+        notifyChanged();
     }
-    private void moveToStorage(Item item, Player player) { removeFromInventory(item, player); addItem(item); }
-    private void moveToAbilityStorage(Ability ability, Player player) { removeFromInventory(ability, player); abilityStorage.add(ability); }
+    private void moveToStorage(Item item, Player player) { removeFromInventory(item, player); addItem(item); notifyChanged(); }
+
+    private void equipUltimate(Ultimate next, Player player) {
+        if (next == null || !next.canBeUsedBy(player) || player.getUltimate() == null
+                || player.getUltimate().getId().equals(next.getId())) return;
+        Ultimate old = player.getUltimate();
+        storage.remove(next);
+        player.setUltimate(next);
+        storage.add(old);
+        notifyChanged();
+    }
+    private void moveToAbilityStorage(Ability ability, Player player) { removeFromInventory(ability, player); abilityStorage.add(ability); notifyChanged(); }
 
     private void drawEquippedGear(Graphics2D g2d, Player player, int x, int y) {
         g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -278,8 +332,13 @@ public class InventoryPanel {
         drawSlot(g2d, x + 65, y + 8, 50, 50, "BODY", body != null ? body.getIconColor() : null,
                 body != null ? body.getName() : null, body != null ? body.getSpritePath() : null);
 
-        ArmorSet displayedSet = head != null && head.getArmorSet() != null
-                ? head.getArmorSet() : body == null ? null : body.getArmorSet();
+        ArmorSet displayedSet = null;
+        if (head != null && head.getArmorSet() != null) {
+            displayedSet = head.getArmorSet();
+        } else if (body != null && body.getArmorSet() != null) {
+            displayedSet = body.getArmorSet();
+        }
+
         int setPieces = displayedSet == null ? 0 : player.getArmorSetPieceCount(displayedSet);
         ArmorSet activeSet = player.getActiveArmorSet();
         boolean mixedSets = head != null && body != null
@@ -315,7 +374,7 @@ public class InventoryPanel {
 
         // Passives
         g2d.setColor(new Color(255, 215, 0));
-        g2d.drawString("PASSIVES", x, y + 188);
+        g2d.drawString("PASSIVES / ULTIMATE", x, y + 188);
 
         Ability[] passives = player.getPassiveSlots();
         for (int i = 0; i < 2; i++) {
@@ -324,6 +383,10 @@ public class InventoryPanel {
                     p != null ? p.getIconColor() : null,
                     p != null ? p.getName() : null, p != null ? p.getSpritePath() : null);
         }
+        Ultimate ultimate = player.getUltimate();
+        drawSlot(g2d, x + 116, y + 196, 50, 50, "R",
+                ultimate == null ? null : ultimate.getIconColor(),
+                ultimate == null ? null : ultimate.getName(), null);
 
         // Hotbar
         g2d.setColor(new Color(255, 215, 0));
@@ -349,7 +412,7 @@ public class InventoryPanel {
         int tabX = x;
         for (Tab t : tabs) {
             boolean active = (t == currentTab);
-            int tw = 92;
+            int tw = 80;
             int th = 26;
 
             g2d.setColor(active ? new Color(55, 90, 160) : new Color(36, 40, 52));
@@ -358,7 +421,7 @@ public class InventoryPanel {
             g2d.setFont(new Font("SansSerif", active ? Font.BOLD : Font.PLAIN, 11));
             g2d.drawString(t.label, tabX + 10, y + 17);
 
-            tabX += tw + 6;
+            tabX += tw + 4;
         }
 
         // Storage grid (5 cols x 4 rows)
@@ -395,11 +458,28 @@ public class InventoryPanel {
                 drawStackCount(g2d, obj instanceof Item ? (Item) obj : null, sx, sy, slotW, slotH);
             }
         }
+
+        List<Object> allItems = getAllFilteredStorage();
+        int pageCount = Math.max(1, (allItems.size() + 19) / 20);
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g2d.setColor(new Color(175, 180, 200));
+        g2d.drawString("<", x + 202, gridY + 276);
+        g2d.drawString("Page " + (storagePage + 1) + " / " + pageCount, x + 224, gridY + 276);
+        g2d.drawString(">", x + 326, gridY + 276);
     }
 
     private List<Object> getFilteredStorage() {
+        List<Object> all = getAllFilteredStorage();
+        int pages = Math.max(1, (all.size() + 19) / 20);
+        storagePage = Math.max(0, Math.min(storagePage, pages - 1));
+        int start = storagePage * 20;
+        return new ArrayList<>(all.subList(start, Math.min(start + 20, all.size())));
+    }
+
+    private List<Object> getAllFilteredStorage() {
         List<Object> list = new ArrayList<>();
-        if (currentTab == Tab.ALL || currentTab == Tab.WEAPONS || currentTab == Tab.ARMOR || currentTab == Tab.CONSUMABLES) {
+        if (currentTab == Tab.ALL || currentTab == Tab.WEAPONS || currentTab == Tab.ARMOR
+                || currentTab == Tab.CONSUMABLES || currentTab == Tab.ULTIMATES) {
             for (Item it : storage) {
                 if (currentTab == Tab.ALL) {
                     list.add(it);
@@ -408,6 +488,8 @@ public class InventoryPanel {
                 } else if (currentTab == Tab.ARMOR && it instanceof Armor) {
                     list.add(it);
                 } else if (currentTab == Tab.CONSUMABLES && it instanceof Consumable) {
+                    list.add(it);
+                } else if (currentTab == Tab.ULTIMATES && it instanceof Ultimate) {
                     list.add(it);
                 }
             }
@@ -488,7 +570,7 @@ public class InventoryPanel {
                         hoveredObj = filtered.get(idx);
                         actionHint = (hoveredObj instanceof Consumable)
                                 ? "Right-Click to Consume | Left-Click to Equip"
-                                : "Left-Click to Equip / Move";
+                                : "Left-Click to Equip / Move | Right-Click to Salvage";
                     }
                     break;
                 }
@@ -525,6 +607,11 @@ public class InventoryPanel {
                 }
             }
         }
+        // Equipped ultimate
+        if (hoveredObj == null && isUltimateSlot(mouseX, mouseY, screenWidth, screenHeight)) {
+            hoveredObj = player.getUltimate();
+            actionHint = "Equipped Ultimate [R]";
+        }
         // Passives P1/P2
         if (hoveredObj == null) {
             Ability[] passives = player.getPassiveSlots();
@@ -553,7 +640,7 @@ public class InventoryPanel {
                         hoveredObj = inv[i];
                         actionHint = (hoveredObj instanceof Consumable)
                                 ? "Right-Click to Consume | Left-Click to Unequip"
-                                : "Hotbar [" + (i + 1) + "] (Click to Unequip to Storage)";
+                                : "Hotbar [" + (i + 1) + "] | Right-Click to Salvage";
                     }
                     break;
                 }
@@ -576,7 +663,8 @@ public class InventoryPanel {
         if (obj instanceof Armor) {
             Armor a = (Armor) obj;
             title = a.getName();
-            badge = "ARMOR [" + a.getSlot() + "]  •  " + (int) Math.round(a.getArmorReduction() * 100) + "% DAMAGE REDUCTION";
+            badge = "LEVEL " + a.getLevel() + "  •  ARMOR [" + a.getSlot() + "]  •  "
+                    + (int) Math.round(a.getArmorReduction() * 100) + "% DAMAGE REDUCTION";
             desc = a.getDescription();
             ArmorSet armorSet = a.getArmorSet();
             if (armorSet != null) {
@@ -618,6 +706,12 @@ public class InventoryPanel {
             badge = "ABILITY  •  " + String.format("%.1fs COOLDOWN", ab.getCooldownTicks() / 60.0);
             desc = ab.getDescription();
             glowColor = new Color(255, 200, 60);
+        } else if (obj instanceof Ultimate) {
+            Ultimate ultimate = (Ultimate) obj;
+            title = ultimate.getName();
+            badge = "ULTIMATE  •  PRESS R WHEN CHARGED";
+            desc = ultimate.getDescription();
+            glowColor = ultimate.getIconColor();
         } else if (obj instanceof Item) {
             Item it = (Item) obj;
             title = it.getName();
@@ -720,11 +814,25 @@ public class InventoryPanel {
         int tabX = px + 315;
         int tabY = py + 75;
         for (Tab t : tabs) {
-            if (clickX >= tabX && clickX <= tabX + 92 && clickY >= tabY && clickY <= tabY + 26) {
+            if (clickX >= tabX && clickX <= tabX + 80 && clickY >= tabY && clickY <= tabY + 26) {
                 currentTab = t;
+                storagePage = 0;
                 return;
             }
-            tabX += 92 + 6;
+            tabX += 80 + 4;
+        }
+
+        int pageY = py + 75 + 40 + 248 + 8;
+        if (clickY >= pageY && clickY <= pageY + 22) {
+            if (clickX >= px + 315 + 190 && clickX <= px + 315 + 216) {
+                storagePage = Math.max(0, storagePage - 1);
+                return;
+            }
+            if (clickX >= px + 315 + 314 && clickX <= px + 315 + 340) {
+                int pageCount = Math.max(1, (getAllFilteredStorage().size() + 19) / 20);
+                storagePage = Math.min(pageCount - 1, storagePage + 1);
+                return;
+            }
         }
 
         // Check storage grid clicks
@@ -751,6 +859,12 @@ public class InventoryPanel {
                             if (con.isUsed()) {
                                 storage.remove(con);
                             }
+                            notifyChanged();
+                            return;
+                        }
+                        if (isRightClick && obj instanceof Item) {
+                            if (obj instanceof Ultimate) return;
+                            salvage((Item) obj, player);
                             return;
                         }
 
@@ -777,6 +891,8 @@ public class InventoryPanel {
                                 con.use(player, currentTick);
                                 if (con.isUsed()) storage.remove(con);
                             }
+                        } else if (obj instanceof Ultimate) {
+                            equipUltimate((Ultimate) obj, player);
                         } else if (obj instanceof Item) {
                             Item it = (Item) obj;
                             if (player.addToHotbar(it)) {
@@ -788,6 +904,7 @@ public class InventoryPanel {
                                 abilityStorage.remove(ab);
                             }
                         }
+                        notifyChanged();
                     }
                     return;
                 }
@@ -804,6 +921,7 @@ public class InventoryPanel {
                 storage.add(player.getHeadArmor());
                 player.equipHead(null);
             }
+            notifyChanged();
             return;
         }
         // Body slot:
@@ -812,8 +930,11 @@ public class InventoryPanel {
                 storage.add(player.getBodyArmor());
                 player.equipBody(null);
             }
+            notifyChanged();
             return;
         }
+        // Ultimate slot is fixed; it can only be replaced by a compatible inventory ultimate.
+        if (isUltimateSlot(clickX, clickY, screenWidth, screenHeight)) return;
 
         // Hotbar click:
         Item[] inv = player.getInventory();
@@ -824,20 +945,43 @@ public class InventoryPanel {
             int sy = leftY + 284 + row * 52;
             if (clickX >= sx && clickX <= sx + 44 && clickY >= sy && clickY <= sy + 44) {
                 if (inv[i] != null) {
+                    if (inv[i] instanceof Ultimate) return;
                     if (isRightClick && inv[i] instanceof Consumable) {
                         Consumable con = (Consumable) inv[i];
                         con.use(player, currentTick);
                         if (con.isUsed()) {
                             inv[i] = null;
                         }
+                        notifyChanged();
+                    } else if (isRightClick && inv[i] instanceof Item) {
+                        Item item = inv[i];
+                        if (item instanceof Ultimate) return;
+                        inv[i] = null;
+                        grantSalvageCoins(item);
+                        notifyChanged();
                     } else {
                         storage.add(inv[i]);
                         inv[i] = null;
+                        notifyChanged();
                     }
                 }
                 return;
             }
         }
+    }
+
+    private void salvage(Item item, Player player) {
+        if (item instanceof Ultimate) return;
+        if (storage.remove(item)) {
+            grantSalvageCoins(item);
+            notifyChanged();
+        }
+    }
+
+    private void grantSalvageCoins(Item item) {
+        int level = item instanceof Armor ? ((Armor) item).getLevel()
+                : item instanceof PlayerWeapon ? ((PlayerWeapon) item).getLevel() : 1;
+        coinReward.accept(Math.max(1, level) * 10);
     }
 
     public void handleClick(int clickX, int clickY, Player player, int screenWidth, int screenHeight) {

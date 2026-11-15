@@ -66,6 +66,11 @@ public final class LootTable {
                             int referenceLevel = equipped instanceof PlayerWeapon
                                     ? ((PlayerWeapon) equipped).getLevel() : 1;
                             weapon.setLevel(PlayerWeapon.rollLevelNear(referenceLevel, RANDOM));
+                        } else if (item instanceof Armor) {
+                            Armor armor = (Armor) item;
+                            Armor equipped = armor.getSlot() == Armor.ArmorSlot.HEAD
+                                    ? player.getHeadArmor() : player.getBodyArmor();
+                            armor.setLevel(Armor.rollLevelNear(equipped == null ? 1 : equipped.getLevel(), RANDOM));
                         }
                         result.add(item);
                     }

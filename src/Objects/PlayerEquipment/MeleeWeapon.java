@@ -3,6 +3,7 @@ package Objects.PlayerEquipment;
 import Objects.Animations.Animation;
 import Objects.Animations.AnimationSegment;
 import Objects.EnemyClasses.Enemy;
+import Objects.PlayerClasses.Player;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
@@ -43,6 +44,7 @@ public abstract class MeleeWeapon extends PlayerWeapon {
     protected Arc2D attackBox;
     protected boolean attackDamageApplied = false;
     protected List<Enemy> enemies;
+    protected Player owner;
     private AttackMove[] comboMoves;
     private int comboIndex;
     private AttackMove activeMove;
@@ -60,6 +62,8 @@ public abstract class MeleeWeapon extends PlayerWeapon {
     public void setEnemies(List<Enemy> enemies) {
         this.enemies = enemies;
     }
+
+    public void setOwner(Player owner) { this.owner = owner; }
 
     public int getDamage() {
         return getScaledDamage(damage);
@@ -168,8 +172,10 @@ public abstract class MeleeWeapon extends PlayerWeapon {
                     if (enemy != null && !enemy.isDead() && enemy.getHitbox() != null) {
                         if (touchingOtherHitBox(attackBox, enemy.getHitbox())) {
                             int attackDamage = Math.max(1, (int) Math.round(getDamage() * activeMove.damageMultiplier));
+                            int previousHealth = enemy.getHealth();
                             enemy.hit(attackDamage, attackSourceX, attackSourceY,
                                     knockbackForce * activeMove.knockbackMultiplier, attackTick);
+                            if (owner != null) owner.chargeUltimateForDamage(previousHealth - enemy.getHealth());
                         }
                     }
                 }

@@ -62,6 +62,14 @@ public abstract class Consumable extends Item {
         return maxUsesPerItem;
     }
 
+    /** Restores durable stack state loaded from a player save. */
+    public void restoreState(int savedStackCount, int savedUsesRemaining) {
+        stackCount = Math.max(0, Math.min(MAX_STACK_SIZE, savedStackCount));
+        usesRemaining = Math.max(0, Math.min(maxUsesPerItem, savedUsesRemaining));
+        if (stackCount == 0) usesRemaining = 0;
+        else if (usesRemaining == 0) usesRemaining = maxUsesPerItem;
+    }
+
     public boolean canStackWith(Consumable other) {
         return other != null
                 && other != this

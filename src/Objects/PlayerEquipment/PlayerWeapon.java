@@ -9,7 +9,7 @@ public abstract class PlayerWeapon extends Item {
     private static final Random RANDOM = new Random();
 
     private int level = 1;
-    private final double damageRoll;
+    private double damageRoll;
 
     protected PlayerWeapon() {
         this(MIN_DAMAGE_ROLL + RANDOM.nextDouble() * (MAX_DAMAGE_ROLL - MIN_DAMAGE_ROLL));
@@ -21,6 +21,16 @@ public abstract class PlayerWeapon extends Item {
             throw new IllegalArgumentException("Weapon damage roll must be between 0.9 and 1.1.");
         }
         this.damageRoll = damageRoll;
+    }
+
+    /** Rebuilds a saved weapon with its original random damage roll. */
+    public final void restoreProgression(double damageRoll, int level) {
+        if (Double.isNaN(damageRoll) || Double.isInfinite(damageRoll)
+                || damageRoll < MIN_DAMAGE_ROLL || damageRoll > MAX_DAMAGE_ROLL) {
+            throw new IllegalArgumentException("Weapon damage roll must be between 0.9 and 1.1.");
+        }
+        this.damageRoll = damageRoll;
+        setLevel(level);
     }
 
     public final int getLevel() {

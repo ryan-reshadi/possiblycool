@@ -1,3 +1,8 @@
 *.class
 /bin
+/out/
 /target/
+
+# Local player progression and atomic-save temporary files
+/.possiblycool/
+player-progress-*.tmp

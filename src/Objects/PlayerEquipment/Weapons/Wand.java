@@ -45,6 +45,11 @@ public class Wand extends PlayerWeapon {
         updateDescription();
     }
 
+    public Wand(String name, int firingCooldown, AttackPattern pattern, double damageRoll, int weaponLevel) {
+        this(name, firingCooldown, pattern);
+        restoreProgression(damageRoll, weaponLevel);
+    }
+
     public Wand(String name, int firingCooldown) {
         this(name, firingCooldown, AttackPattern.SINGLE);
     }
@@ -113,6 +118,38 @@ public class Wand extends PlayerWeapon {
 
     public PassiveSpell[] getPassives() {
         return passives;
+    }
+
+    public String getSavedActiveSpellType() {
+        return activeSpell == null ? null : activeSpell.getClass().getSimpleName();
+    }
+
+    public List<String> getSavedPassiveSpellTypes() {
+        return List.of(
+                passives[0] == null ? "" : passives[0].getClass().getSimpleName(),
+                passives[1] == null ? "" : passives[1].getClass().getSimpleName());
+    }
+
+    public void restoreSavedSpells(String activeType, String firstPassive, String secondPassive) {
+        ActiveSpell restored = activeSpellFromType(activeType);
+        if (restored != null) setActiveSpell(restored);
+        if (firstPassive != null || secondPassive != null) {
+            setPassives(passiveSpellFromType(firstPassive), passiveSpellFromType(secondPassive));
+        }
+    }
+
+    private static ActiveSpell activeSpellFromType(String type) {
+        if ("FireBoltSpell".equals(type)) return new FireBoltSpell();
+        if ("IceBoltSpell".equals(type)) return new IceBoltSpell();
+        if ("ArcaneSpell".equals(type)) return new ArcaneSpell();
+        return null;
+    }
+
+    private static PassiveSpell passiveSpellFromType(String type) {
+        if ("BurnPassive".equals(type)) return new BurnPassive();
+        if ("SlowPassive".equals(type)) return new SlowPassive();
+        if ("PoisonPassive".equals(type)) return new PoisonPassive();
+        return null;
     }
 
     public void randomizeSpells() {
@@ -189,6 +226,7 @@ public class Wand extends PlayerWeapon {
             }
         });
         projRef[0].setEnemies(enemies);
+        projRef[0].setOwner(owner);
         projRef[0].setPassives(passives);
         level.queueAddVisualObject(projRef[0]);
     }

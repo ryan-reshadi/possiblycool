@@ -11,7 +11,7 @@ public class WizardButton extends Button {
 
     @Override
     public void buttonAction() {
-        this.game.player = new Objects.PlayerClasses.WizardPlayer(400, 300);
+        this.game.selectPlayer(new Objects.PlayerClasses.WizardPlayer(400, 300));
         this.game.startSelectedLevel();
     }
 }

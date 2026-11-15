@@ -40,9 +40,13 @@ public class TankShieldBash extends Ability {
 
             if (dist <= PUSH_RANGE) {
                 if (dist > 0) {
+                    int previousHealth = enemy.getHealth();
                     enemy.hit(DAMAGE, playerCX, playerCY, PUSH_DISTANCE, currentTick);
+                    player.chargeUltimateForDamage(previousHealth - enemy.getHealth());
                 } else {
+                    int previousHealth = enemy.getHealth();
                     enemy.hit(DAMAGE, playerCX - 1, playerCY, PUSH_DISTANCE, currentTick);
+                    player.chargeUltimateForDamage(previousHealth - enemy.getHealth());
                 }
                 enemy.stun(90, currentTick);
             }

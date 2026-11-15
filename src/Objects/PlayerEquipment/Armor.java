@@ -22,6 +22,7 @@ public class Armor extends Item {
     private final double armorReduction; // 0.0 – 1.0, capped by slot
     private final ArmorSlot slot;
     private final ArmorSet armorSet;
+    private int level = 1;
 
     public Armor(String name, String description, double armorReduction, ArmorSlot slot) {
         this(name, description, armorReduction, slot, null);
@@ -40,7 +41,22 @@ public class Armor extends Item {
     }
 
     public double getArmorReduction() {
-        return armorReduction;
+        double scaledReduction = armorReduction * (1.0 + 0.05 * (level - 1));
+        double cap = slot == ArmorSlot.HEAD ? HEAD_MAX_REDUCTION : BODY_MAX_REDUCTION;
+        return Math.min(cap, scaledReduction);
+    }
+
+    public int getLevel() { return level; }
+
+    public void setLevel(int level) { this.level = Math.max(1, level); }
+
+    public void restoreProgression(int level) { setLevel(level); }
+
+    public static int rollLevelNear(int referenceLevel, java.util.Random random) {
+        if (random == null) throw new IllegalArgumentException("Random source cannot be null.");
+        int roll = random.nextInt(100);
+        int offset = roll < 15 ? -1 : roll < 50 ? 0 : 1;
+        return Math.max(1, referenceLevel + offset);
     }
 
     public ArmorSlot getSlot() {

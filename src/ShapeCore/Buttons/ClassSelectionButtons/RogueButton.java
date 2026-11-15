@@ -12,7 +12,7 @@ public class RogueButton extends Button {
 
     @Override
     public void buttonAction() {
-        this.game.player = new Objects.PlayerClasses.RoguePlayer(400, 300);
+        this.game.selectPlayer(new Objects.PlayerClasses.RoguePlayer(400, 300));
         this.game.startSelectedLevel();
     }
 

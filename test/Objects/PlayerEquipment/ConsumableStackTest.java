@@ -6,7 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import Objects.PlayerClasses.Player;
 import Objects.PlayerClasses.RoguePlayer;
+import Objects.VisualObject;
+import Levels.BaseLevel;
 import ShapeCore.InventoryPanel;
+import java.awt.Color;
+import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 
 class ConsumableStackTest {
@@ -47,6 +51,42 @@ class ConsumableStackTest {
         assertEquals(Consumable.MAX_STACK_SIZE,
                 ((Consumable) inventory.getStorage().get(0)).getStackCount());
         assertEquals(1, ((Consumable) inventory.getStorage().get(1)).getStackCount());
+    }
+
+    @Test
+    void collectedConsumablesMergeIntoExistingHotbarStacks() {
+        Player player = new RoguePlayer(0, 0);
+        for (int i = 0; i < player.getInventory().length; i++) {
+            player.getInventory()[i] = null;
+        }
+        HealthPotion existing = new HealthPotion();
+        player.getInventory()[0] = existing;
+        BaseLevel level = new BaseLevel(Color.BLACK, new ArrayList<>(java.util.List.of(player)));
+
+        level.collectItem(new HealthPotion());
+
+        assertEquals(2, existing.getStackCount());
+        assertTrue(level.getInventoryPanel().getStorage().isEmpty());
+    }
+
+    @Test
+    void collectedConsumableOverflowGoesToInventoryStorage() {
+        Player player = new RoguePlayer(0, 0);
+        for (int i = 0; i < player.getInventory().length; i++) {
+            player.getInventory()[i] = null;
+        }
+        HealthPotion existing = new HealthPotion();
+        for (int i = 1; i < Consumable.MAX_STACK_SIZE; i++) {
+            existing.mergeFrom(new HealthPotion());
+        }
+        player.getInventory()[0] = existing;
+        BaseLevel level = new BaseLevel(Color.BLACK, new ArrayList<>(java.util.List.of(player)));
+
+        level.collectItem(new HealthPotion());
+
+        assertEquals(Consumable.MAX_STACK_SIZE, existing.getStackCount());
+        assertEquals(1, level.getInventoryPanel().getStorage().size());
+        assertEquals(1, ((Consumable) level.getInventoryPanel().getStorage().get(0)).getStackCount());
     }
 
     @Test

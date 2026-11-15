@@ -12,19 +12,76 @@ import org.junit.jupiter.api.Test;
 
 class TankWeaponAttackTest {
     @Test
+    void enemyUpdateChasesIntoRangeAndDealsDamage() {
+        TankWeapon weapon = new TankWeapon();
+        MeleeEnemy enemy = new MeleeEnemy(250, 100);
+        RoguePlayer player = new RoguePlayer(100, 100);
+        enemy.setWeapon(weapon);
+
+        for (int tick = 1; tick <= 60; tick++) {
+            enemy.checkAggro(player);
+            enemy.update(tick);
+        }
+
+        assertTrue(enemy.x < 250, "The tank should pursue at its movement speed.");
+        assertTrue(player.getHealth() < player.getMaxHealth(),
+                "The normal enemy update path should eventually apply melee damage.");
+    }
+
+    @Test
+    void takingAHitCancelsTheCurrentSwing() {
+        TankWeapon weapon = new TankWeapon();
+        MeleeEnemy enemy = new MeleeEnemy(100, 100);
+        RoguePlayer player = new RoguePlayer(145, 105);
+        enemy.setWeapon(weapon);
+        enemy.checkAggro(player);
+        enemy.update(1);
+
+        assertTrue(weapon.isAttacking());
+        enemy.hit(1, player.getX(), player.getY(), 8, 2);
+
+        assertFalse(weapon.isAttacking());
+        assertNull(weapon.getAttackArc());
+    }
+
+    @Test
+    void tankEnemySwordGivesPlayerLongerReactionWindow() {
+        TankEnemySword sword = new TankEnemySword();
+        MeleeEnemy enemy = new MeleeEnemy(100, 100);
+        RoguePlayer player = new RoguePlayer(145, 105);
+        enemy.setWeapon(sword);
+        enemy.checkAggro(player);
+
+        enemy.update(0);
+        assertTrue(sword.isAttacking());
+        assertEquals(72 * 2.0, sword.getAttackArc().getWidth());
+
+        for (int tick = 1; tick <= 21; tick++) {
+            enemy.update(tick);
+        }
+        assertEquals(player.getMaxHealth(), player.getHealth(),
+                "The sword should telegraph for at least 21 ticks before its first hit.");
+
+        enemy.update(22);
+        assertEquals(player.getMaxHealth() - 10, player.getHealth());
+    }
+
+    @Test
     void tankWeaponShowsAndExecutesTankSwordStyleCombo() {
         TankWeapon weapon = new TankWeapon();
         MeleeEnemy enemy = new MeleeEnemy(100, 100);
         RoguePlayer player = new RoguePlayer(145, 105);
+        enemy.setWeapon(weapon);
+        enemy.checkAggro(player);
 
-        weapon.update(enemy, player, 0);
+        enemy.update(0);
 
         assertTrue(weapon.isAttacking());
         assertArc(weapon, 72, 44);
         BufferedImage image = new BufferedImage(250, 250, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         try {
-            weapon.aim(enemy, player, graphics);
+            enemy.render(graphics, 0);
         } finally {
             graphics.dispose();
         }

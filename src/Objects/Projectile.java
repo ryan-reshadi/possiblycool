@@ -2,6 +2,7 @@ package Objects;
 
 import Objects.EnemyClasses.Enemy;
 import Objects.PlayerEquipment.Spells.PassiveSpell;
+import Objects.PlayerClasses.Player;
 
 import java.awt.Color;
 import java.awt.Graphics;
@@ -23,6 +24,7 @@ public class Projectile extends VisualObject {
     private List<Enemy> enemies;
     private List<? extends VisualObject> walls;
     private PassiveSpell[] passives;
+    private Player owner;
 
     private int ticksAlive = 0;
     public static final int MAX_LIFETIME_TICKS = 180;
@@ -50,6 +52,8 @@ public class Projectile extends VisualObject {
         this.passives = passives;
     }
 
+    public void setOwner(Player owner) { this.owner = owner; }
+
     @Override
     public void update(int tickCount) {
         if (removed) return;
@@ -74,7 +78,9 @@ public class Projectile extends VisualObject {
         if (enemies != null) {
             for (Enemy enemy : enemies) {
                 if (enemy != null && !enemy.isDead() && checkCollision(enemy)) {
+                    int previousHealth = enemy.getHealth();
                     enemy.hit(damage, x + width / 2, y + height / 2, 4.0, tickCount);
+                    if (owner != null) owner.chargeUltimateForDamage(previousHealth - enemy.getHealth());
                     if (passives != null) {
                         for (PassiveSpell passive : passives) {
                             if (passive != null) {

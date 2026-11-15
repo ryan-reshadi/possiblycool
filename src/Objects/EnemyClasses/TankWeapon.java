@@ -30,41 +30,58 @@ public class TankWeapon extends EnemyWeapon {
         double dx = p.getX() + p.getWidth() / 2.0 - (e.x + e.width / 2.0);
         double dy = p.getY() + p.getHeight() / 2.0 - (e.y + e.height / 2.0);
         double distance = Math.hypot(dx, dy);
+        boolean hasLineOfSight = e.hasLineOfSightTo(p);
 
         if (attacking) {
             attackElapsedTicks++;
-            if (!attackDamageApplied && attackElapsedTicks >= DAMAGE_DELAY_TICKS[combo]) {
-                if (e.hasLineOfSightTo(p) && e.touchingOtherHitBox(attackArc, p.getHitbox())) {
-                    p.hurt(DAMAGES[combo]);
+            if (!attackDamageApplied && attackElapsedTicks >= getDamageDelayTicks(combo)) {
+                if (hasLineOfSight && e.touchingOtherHitBox(attackArc, p.getHitbox())) {
+                    p.hurt(getMoveDamage(combo));
                 }
                 attackDamageApplied = true;
             }
-            if (attackElapsedTicks >= ANIMATION_TICKS[combo]) {
+            if (attackElapsedTicks >= getAnimationTicks(combo)) {
                 attacking = false;
                 attackArc = null;
-                combo = (combo + 1) % RANGES.length;
+                combo = (combo + 1) % getComboLength();
                 lastAttack = tick;
             }
-        } else if (ready(tick) && distance < range && e.hasLineOfSightTo(p)) {
+        } else {
             double attackAngle = Math.atan2(dy, dx);
-            attackElapsedTicks = 0;
-            attackDamageApplied = false;
-            attackArc = createAttackArc(e, attackAngle, RANGES[combo], ANGLES[combo]);
-            attacking = true;
-        } else if (distance > range) {
-            double step = Math.min(0.7, distance);
-            e.moveWithWallCollision((int) Math.round(dx / distance * step),
-                    (int) Math.round(dy / distance * step));
+            Arc2D aimedArc = createAttackArc(e, attackAngle,
+                    getMoveRange(combo), getMoveAngle(combo));
+            boolean targetInRange = e.touchingOtherHitBox(aimedArc, p.getHitbox());
+            if (ready(tick) && hasLineOfSight && targetInRange) {
+                attackElapsedTicks = 0;
+                attackDamageApplied = false;
+                attackArc = aimedArc;
+                attacking = true;
+            } else if (!hasLineOfSight || !targetInRange) {
+                if (distance > 0) {
+                    double step = Math.min(e.getCurrentSpeed(tick), distance);
+                    e.moveWithWallCollision((int) Math.round(dx / distance * step),
+                            (int) Math.round(dy / distance * step));
+                }
+            }
         }
+    }
+
+    public void cancelAttack() {
+        attacking = false;
+        attackArc = null;
+        attackElapsedTicks = 0;
+        attackDamageApplied = false;
     }
 
     @Override
     public void aim(Enemy e, Player p, Graphics2D g) {
         if (attacking && attackArc != null) {
             g.setColor(attackDamageApplied
-                    ? new Color(255, 60, 60, 160)
-                    : new Color(255, 255, 255, 120));
+                    ? new Color(255, 60, 60, 190)
+                    : new Color(255, 255, 255, 170));
             g.fill(attackArc);
+            g.setColor(new Color(255, 255, 255, 220));
+            g.draw(attackArc);
             return;
         }
         if (p == null) return;
@@ -85,6 +102,30 @@ public class TankWeapon extends EnemyWeapon {
 
     public boolean isAttacking() {
         return attacking;
+    }
+
+    protected int getComboLength() {
+        return RANGES.length;
+    }
+
+    protected int getMoveRange(int move) {
+        return RANGES[move];
+    }
+
+    protected int getMoveAngle(int move) {
+        return ANGLES[move];
+    }
+
+    protected int getAnimationTicks(int move) {
+        return ANIMATION_TICKS[move];
+    }
+
+    protected int getDamageDelayTicks(int move) {
+        return DAMAGE_DELAY_TICKS[move];
+    }
+
+    protected int getMoveDamage(int move) {
+        return DAMAGES[move];
     }
 
     private static Arc2D createAttackArc(Enemy e, double angle, int attackRange, int attackAngle) {

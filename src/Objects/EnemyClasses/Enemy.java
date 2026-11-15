@@ -6,6 +6,7 @@ import Objects.PlayerEquipment.Item;
 import Objects.ProjectileCollision;
 import Objects.Terrain.Border;
 import Objects.Terrain.BossDoor;
+import Objects.Effects.RallyBarricade;
 import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -103,6 +104,7 @@ public class Enemy extends Entity {
     private boolean collidesWithWall(int candidateX, int candidateY) {
         for (VisualObject wall : borders) {
             if (!(wall instanceof Border)) continue;
+            if (wall instanceof RallyBarricade) continue;
             Border border = (Border) wall;
             if (border instanceof BossDoor && !((BossDoor) border).isLocked()) continue;
             if (candidateX < border.getX() + border.getWidth()
