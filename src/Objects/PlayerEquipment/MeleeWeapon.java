@@ -106,9 +106,12 @@ public abstract class MeleeWeapon extends PlayerWeapon {
     public void attack(int clickXDown, int clickYDown, int currentTick, int processedX, int processedY) {
         if (isInAnimation()) return;
 
-        activeMove = (comboMoves == null)
+        AttackMove baseMove = (comboMoves == null)
                 ? new AttackMove(attackRange, attackAngle, attackAnimationLength, attackDamageDelay, 1.0, 1.0)
                 : comboMoves[comboIndex];
+        int rangeBonus = owner == null ? 0 : owner.getAttackRangeBonus();
+        activeMove = new AttackMove(baseMove.range + rangeBonus, baseMove.angle, baseMove.animationTicks,
+                baseMove.damageDelayTicks, baseMove.damageMultiplier, baseMove.knockbackMultiplier);
 
         double deltaX = -1 * (processedX - clickXDown);
         double deltaY = -1 * (processedY - clickYDown);
@@ -131,6 +134,9 @@ public abstract class MeleeWeapon extends PlayerWeapon {
         );
 
         this.startAttackAnimation();
+        if (owner != null) {
+            owner.notifyAttackPerformed(null, currentTick);
+        }
     }
 
     public void startAttackAnimation() {
@@ -171,7 +177,8 @@ public abstract class MeleeWeapon extends PlayerWeapon {
                 for (Enemy enemy : enemies) {
                     if (enemy != null && !enemy.isDead() && enemy.getHitbox() != null) {
                         if (touchingOtherHitBox(attackBox, enemy.getHitbox())) {
-                            int attackDamage = Math.max(1, (int) Math.round(getDamage() * activeMove.damageMultiplier));
+                            double ownerMultiplier = owner == null ? 1.0 : owner.getAttackDamageMultiplier();
+                            int attackDamage = Math.max(1, (int) Math.round(getDamage() * activeMove.damageMultiplier * ownerMultiplier));
                             int previousHealth = enemy.getHealth();
                             enemy.hit(attackDamage, attackSourceX, attackSourceY,
                                     knockbackForce * activeMove.knockbackMultiplier, attackTick);

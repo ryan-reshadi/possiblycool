@@ -54,16 +54,25 @@ final class RouteMapScreen {
 
         Set<String> reachable = new HashSet<>();
         for (RunRoute.Node n : route.getReachableNodes()) reachable.add(n.id);
+        String currentNodeId = route.getPendingNodeId() != null
+                ? route.getPendingNodeId()
+                : route.getPreviousNodeId();
         for (RunRoute.Node node : route.getNodes()) {
             int[] p = position(route, node);
             boolean active = reachable.contains(node.id);
+            boolean current = node.id.equals(currentNodeId);
             Color fill = node.type == RunRoute.Type.SHOP ? new Color(175, 125, 38)
                     : node.type == RunRoute.Type.BOSS ? new Color(145, 45, 55)
                     : node.type == RunRoute.Type.TUTORIAL ? new Color(55, 120, 110)
                     : new Color(62, 78, 110);
-            if (!active) fill = new Color(fill.getRed() / 2, fill.getGreen() / 2, fill.getBlue() / 2);
+            if (!active && !current) fill = new Color(fill.getRed() / 2, fill.getGreen() / 2, fill.getBlue() / 2);
             g.setColor(fill);
             g.fill(new RoundRectangle2D.Double(p[0] - 72, p[1] - 24, 144, 48, 14, 14));
+            if (current) {
+                g.setColor(new Color(120, 235, 255));
+                g.setStroke(new BasicStroke(4));
+                g.draw(new RoundRectangle2D.Double(p[0] - 78, p[1] - 30, 156, 60, 18, 18));
+            }
             g.setColor(active ? Color.WHITE : new Color(130, 130, 140));
             g.setStroke(new BasicStroke(active ? 2 : 1));
             g.draw(new RoundRectangle2D.Double(p[0] - 72, p[1] - 24, 144, 48, 14, 14));

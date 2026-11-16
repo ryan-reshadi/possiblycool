@@ -12,7 +12,6 @@ import Objects.PlayerEquipment.Weapons.Dagger;
 import Objects.PlayerEquipment.Weapons.Wand;
 import Objects.Terrain.*;
 import Objects.Effects.RallyBarricade;
-import Objects.PlayerEquipment.Ultimate;
 import ShapeCore.AbilityBarUI;
 import ShapeCore.UltimateBarUI;
 import ShapeCore.HotbarUI;
@@ -113,12 +112,6 @@ public class BaseLevel {
     }
 
     public void collectItem(Item item) {
-        if (item instanceof Ultimate && player != null) {
-            Ultimate incoming = (Ultimate) item;
-            if ((player.getUltimate() != null && player.getUltimate().getId().equals(incoming.getId()))
-                    || inventoryPanel.getStorage().stream().filter(Ultimate.class::isInstance)
-                    .map(Ultimate.class::cast).anyMatch(existing -> existing.getId().equals(incoming.getId()))) return;
-        }
         if (player != null && item instanceof Consumable) {
             player.mergeIntoHotbar((Consumable) item);
             if (((Consumable) item).isUsed()) return;
@@ -186,7 +179,8 @@ public class BaseLevel {
                 this.scrollHandler(input.getScrollDelta());
                 if (input.getScrollDelta() != 0) this.progressSaveListener.run();
                 boolean openedChest = this.checkInteractions(input, tickCount);
-                if (!openedChest && input.hasMousePress()) {
+                boolean ultimateOverridesAttack = this.player.isUltimateWeaponOverrideActive() && !(equipped instanceof Consumable);
+                if (!openedChest && input.hasMousePress() && !ultimateOverridesAttack) {
                     this.mouseHandler(input.getClickXDown() + cameraX,
                             input.getClickYDown() + cameraY, tickCount);
                 }
@@ -214,6 +208,10 @@ public class BaseLevel {
                 }
                 if (!obj.isVisible()) queueRemoveVisualObject(obj);
             }
+        }
+
+        if (this.player != null && !this.player.isDead()) {
+            this.player.tickUltimate(this, tickCount, input);
         }
 
         updateCamera();
@@ -277,7 +275,7 @@ public class BaseLevel {
             this.player.tryActivateAbility(2, this, currentTick, mouseX + cameraX, mouseY + cameraY);
         }
         if (input.wasPressed(82)) {
-            this.player.tryActivateUltimate(this, currentTick, mouseX + cameraX, mouseY + cameraY);
+            this.player.tryActivateOrRetriggerUltimate(this, currentTick, mouseX + cameraX, mouseY + cameraY);
         }
         return openedChest;
     }
@@ -380,6 +378,14 @@ public class BaseLevel {
             Consumable consumable = (Consumable) heldItem;
             g2d.drawString("Uses left: " + consumable.getUsesRemaining()
                     + "   Stack: " + consumable.getStackCount(), x + 12, y + 47);
+        } else if (heldItem instanceof MeleeWeapon) {
+            MeleeWeapon weapon = (MeleeWeapon) heldItem;
+            g2d.drawString(String.format("DMG: %d   RNG: %d",
+                    weapon.getDamage(), weapon.getAttackRange()), x + 12, y + 47);
+        } else if (heldItem instanceof Wand) {
+            Wand wand = (Wand) heldItem;
+            g2d.drawString(String.format("DMG: %d   RNG: %d",
+                    wand.getDamage(), wand.getEffectiveRange()), x + 12, y + 47);
         } else {
             g2d.drawString("Uses left: N/A   Stack: 1", x + 12, y + 47);
         }
@@ -609,5 +615,28 @@ public class BaseLevel {
 
     public int getCameraY() {
         return cameraY;
+    }
+
+    /** Clips a dash/teleport path so the player cannot pass through blocking walls or out of bounds. */
+    public int[] clipDashPath(int startCenterX, int startCenterY, int endCenterX, int endCenterY, int playerWidth, int playerHeight) {
+        if (player == null) return new int[]{endCenterX, endCenterY};
+        int startX = startCenterX - playerWidth / 2;
+        int startY = startCenterY - playerHeight / 2;
+        int endX = endCenterX - playerWidth / 2;
+        int endY = endCenterY - playerHeight / 2;
+        int dx = endX - startX;
+        int dy = endY - startY;
+        int steps = Math.max(Math.abs(dx), Math.abs(dy));
+        int lastX = startX;
+        int lastY = startY;
+        if (steps == 0) return new int[]{startCenterX, startCenterY};
+        for (int step = 1; step <= steps; step++) {
+            int cx = startX + (int) Math.round(dx * (step / (double) steps));
+            int cy = startY + (int) Math.round(dy * (step / (double) steps));
+            if (isPlayerBlockedAt(cx, cy)) break;
+            lastX = cx;
+            lastY = cy;
+        }
+        return new int[]{lastX + playerWidth / 2, lastY + playerHeight / 2};
     }
 }

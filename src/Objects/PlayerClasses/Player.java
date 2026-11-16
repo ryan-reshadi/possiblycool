@@ -2,6 +2,7 @@ package Objects.PlayerClasses;
 
 import GameRun.InputFrame;
 import Objects.Entity;
+import GameRun.InputFrame;
 import Objects.PlayerEquipment.Ability;
 import Objects.PlayerEquipment.Armor;
 import Objects.PlayerEquipment.ArmorSet;
@@ -32,7 +33,7 @@ public class Player extends Entity {
     public Ability[] passiveSlots = new Ability[2];
 
     private Ultimate ultimate;
-    private double ultimateCharge;
+    private double ultimateCharge; // 0..100
     private double ultimateGuardReduction;
     private int ultimateGuardExpiresAt = -1;
 
@@ -86,6 +87,7 @@ public class Player extends Entity {
         int nextSpeedBonus = activeSet == null ? 0 : activeSet.getBonusMovementSpeed();
         total += activeSet == null ? 0.0 : activeSet.getBonusArmorReduction();
         total += ultimateGuardReduction;
+        if (ultimate != null) total += ultimate.getDamageReductionBonus();
         this.speed = (int) Math.round(this.speed - armorSetSpeedBonus + nextSpeedBonus);
         armorSetSpeedBonus = nextSpeedBonus;
         armorSetSpellDamageBonus = activeSet == null ? 0.0 : activeSet.getBonusSpellDamage();
@@ -122,7 +124,7 @@ public class Player extends Entity {
     }
 
     public boolean addToHotbar(Item item) {
-        if (item == null || item instanceof Ultimate) {
+        if (item == null) {
             return false;
         }
         if (item instanceof Consumable) {
@@ -196,7 +198,9 @@ public class Player extends Entity {
             weapon.updateAttackAnimation();
         }
 
-        ultimateCharge = Math.min(100.0, ultimateCharge + (100.0 / 6000.0));
+        if (ultimate == null || !ultimate.blocksChargeGain()) {
+            ultimateCharge = Math.min(100.0, ultimateCharge + (100.0 / 6000.0));
+        }
         if (ultimateGuardExpiresAt != -1 && currentTick >= ultimateGuardExpiresAt) {
             ultimateGuardExpiresAt = -1;
             ultimateGuardReduction = 0.0;
@@ -257,7 +261,16 @@ public class Player extends Entity {
                 if (c.isUsed()) {
                     inventory[MainHandIndex] = null;
                 }
+            } else if (ultimate != null && ultimate.isActive()) {
+                ultimate.onPlayerAttack(this, null, currentTick);
             }
+        }
+    }
+
+    /** Notify active roaming ultimate that a damaging/weapon attack occurred (used by weapons/effects). */
+    public void notifyAttackPerformed(Levels.BaseLevel level, int currentTick) {
+        if (ultimate != null && ultimate.isActive()) {
+            ultimate.onPlayerAttack(this, level, currentTick);
         }
     }
 
@@ -278,21 +291,50 @@ public class Player extends Entity {
     public double getUltimateCharge() { return ultimateCharge; }
 
     public void setUltimate(Ultimate next) {
-        if (next != null && !next.canBeUsedBy(this)) return;
-        if (ultimate == next || (ultimate != null && next != null && ultimate.getId().equals(next.getId()))) return;
+        if (ultimate == next) return;
         ultimate = next;
         ultimateCharge = 0.0;
+        recalcArmorReduction();
     }
 
     public void chargeUltimateForDamage(int damage) {
-        if (damage > 0 && ultimate != null) ultimateCharge = Math.min(100.0, ultimateCharge + damage * 0.1);
+        if (ultimate == null || ultimate.blocksChargeGain()) return;
+        if (damage > 0) ultimateCharge = Math.min(100.0, ultimateCharge + damage * 0.1);
     }
 
-    public boolean tryActivateUltimate(Levels.BaseLevel level, int currentTick, int targetX, int targetY) {
-        if (ultimate == null || ultimateCharge < 100.0) return false;
-        ultimateCharge = 0.0;
-        ultimate.activate(this, level, currentTick, targetX, targetY);
-        return true;
+    public boolean tryActivateOrRetriggerUltimate(Levels.BaseLevel level, int currentTick, int targetX, int targetY) {
+        if (ultimate == null) return false;
+        if (ultimate.isActive()) {
+            return ultimate.tryRetrigger(this, level, currentTick, targetX, targetY);
+        }
+        if (ultimateCharge < 100.0) return false;
+        boolean activated = ultimate.tryActivate(this, level, currentTick, targetX, targetY);
+        if (activated) {
+            ultimateCharge = 0.0;
+            recalcArmorReduction();
+        }
+        return activated;
+    }
+
+    public void tickUltimate(Levels.BaseLevel level, int currentTick, InputFrame input) {
+        if (ultimate != null) {
+            ultimate.tick(this, level, currentTick, input);
+            if (ultimate.isActive()) {
+                ultimate.handleHeldAttack(this, level, currentTick, input);
+            }
+        }
+    }
+
+    public boolean isUltimateWeaponOverrideActive() {
+        return ultimate != null && ultimate.isActive() && ultimate.overridesWeaponAttack();
+    }
+
+    public double getAttackDamageMultiplier() {
+        return ultimate == null ? 1.0 : ultimate.getDamageMultiplier();
+    }
+
+    public int getAttackRangeBonus() {
+        return ultimate == null ? 0 : ultimate.getAttackRangeBonus();
     }
 
     public void grantUltimateGuard(int currentTick, int durationTicks, double reduction) {

@@ -1,8 +1,9 @@
 package Objects.PlayerClasses;
 
 import Objects.PlayerEquipment.Abilities.RogueShadowStep;
+import Objects.PlayerEquipment.Abilities.TrickstersArrowAbility;
 import Objects.PlayerEquipment.Weapons.Dagger;
-import Objects.PlayerEquipment.Ultimate;
+import Objects.PlayerEquipment.Ultimates.AThousandCutsUltimate;
 
 public class RoguePlayer extends Player {
 
@@ -20,6 +21,7 @@ public class RoguePlayer extends Player {
         this.inventory[0] = new Dagger();
         this.MainHandIndex = 0;
         this.abilitySlots[0] = new RogueShadowStep();
-        setUltimate(new Ultimate(Ultimate.defaultFor(this)));
+        this.abilitySlots[1] = new TrickstersArrowAbility();
+        setUltimate(new AThousandCutsUltimate());
     }
 }

@@ -85,7 +85,10 @@ public class Wand extends PlayerWeapon {
     }
 
     public int getDamage() {
-        return activeSpell == null ? 0 : getScaledDamage(activeSpell.getDamage());
+        if (activeSpell == null) return 0;
+        long rolledDamage = Math.round(activeSpell.getDamage() * getDamageRollMultiplier());
+        long levelBonus = ((long) getLevel() - 1) * 3;
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(1, rolledDamage + levelBonus));
     }
 
     public int getDamage(Player owner) {

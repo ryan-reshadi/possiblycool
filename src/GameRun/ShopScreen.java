@@ -8,7 +8,6 @@ import Objects.PlayerEquipment.KnightHelmet;
 import Objects.PlayerEquipment.RogueHood;
 import Objects.PlayerEquipment.RogueTunic;
 import Objects.PlayerEquipment.TankSword;
-import Objects.PlayerEquipment.Ultimate;
 import Objects.PlayerEquipment.WizardHat;
 import Objects.PlayerEquipment.WizardRobe;
 import Objects.PlayerEquipment.Weapons.BasicWand;
@@ -30,10 +29,7 @@ final class ShopScreen {
         Player player = game.getPlayer();
         Random random = new Random(game.getRunRoute().getSeed() ^ node.id.hashCode());
         List<Item> gear = gearFor(player);
-        for (int i = 0; i < 2; i++) addOffer(node, gear.get(random.nextInt(gear.size())));
-        Ultimate.Type alternate = Ultimate.alternateFor(player);
-        if (!game.ownsUltimate(alternate.getId())) node.shopStock.add(ultimateOffer(alternate));
-        else addOffer(node, gear.get(random.nextInt(gear.size())));
+        for (int i = 0; i < 3; i++) addOffer(node, gear.get(random.nextInt(gear.size())));
     }
 
     private void addOffer(RunRoute.Node node, Item item) {
@@ -44,13 +40,6 @@ final class ShopScreen {
         offer.put("price", 30 + 20 * Math.max(1, level));
         offer.put("offerId", item.getClass().getSimpleName() + "-" + node.shopStock.size());
         node.shopStock.add(offer);
-    }
-
-    private java.util.Map<String, Object> ultimateOffer(Ultimate.Type type) {
-        java.util.Map<String, Object> offer = ProgressionStore.serializeItem(new Ultimate(type));
-        offer.put("price", 120);
-        offer.put("offerId", "ultimate-" + type.getId());
-        return offer;
     }
 
     private List<Item> gearFor(Player player) {

@@ -6,7 +6,6 @@ import Objects.PlayerEquipment.Consumable;
 import Objects.PlayerEquipment.HealthPotion;
 import Objects.PlayerEquipment.Item;
 import Objects.PlayerEquipment.PlayerWeapon;
-import Objects.PlayerEquipment.Ultimate;
 import Objects.PlayerEquipment.TankSword;
 import Objects.PlayerEquipment.KnightChestplate;
 import Objects.PlayerEquipment.KnightHelmet;
@@ -26,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,7 +46,7 @@ public final class ProgressionStore {
     }
 
     ProgressionStore(Preferences preferences) {
-        this(defaultSaveFile(), preferences);
+        this(isolatedSaveFile(preferences), preferences);
     }
 
     ProgressionStore(Path saveFile) {
@@ -65,6 +65,14 @@ public final class ProgressionStore {
             throw new IllegalStateException("Could not determine the user's home directory for saves.");
         }
         return Paths.get(home, ".possiblycool", "player-progress.json");
+    }
+
+    private static Path isolatedSaveFile(Preferences preferences) {
+        java.util.Objects.requireNonNull(preferences, "preferences");
+        String node = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(preferences.absolutePath().getBytes(StandardCharsets.UTF_8));
+        return Paths.get(System.getProperty("java.io.tmpdir"), "possiblycool-tests", node,
+                "player-progress.json");
     }
 
     public synchronized boolean isLevelSelectorUnlocked() {
@@ -133,37 +141,12 @@ public final class ProgressionStore {
     public synchronized void addStoredItem(Player player, Item item) {
         if (item == null) return;
         CharacterProgress character = getProgress(characterId(player));
-        if (item instanceof Ultimate && ownsUltimate(player, ((Ultimate) item).getId())) return;
         character.storage.add(serializeItem(item));
         write();
-    }
-
-    public synchronized boolean ownsUltimate(Player player, String ultimateId) {
-        CharacterProgress character = getProgress(characterId(player));
-        if (ultimateId == null) return false;
-        if (player.getUltimate() != null && ultimateId.equals(player.getUltimate().getId())) return true;
-        if (character.unlockedUltimates.contains(ultimateId)
-                || (character.equippedUltimateId != null && character.equippedUltimateId.equals(ultimateId))) return true;
-        for (Map<String, Object> item : character.storage) {
-            if ("ultimate".equals(item.get("type")) && ultimateId.equals(item.get("id"))) return true;
-        }
-        return false;
-    }
-
-    public synchronized boolean purchaseUltimate(Player player, Ultimate.Type type, int cost) {
-        Ultimate item = new Ultimate(type);
-        if (!item.canBeUsedBy(player) || ownsUltimate(player, item.getId()) || cost < 0) return false;
-        CharacterProgress character = getProgress(characterId(player));
-        if (character.coins < cost) return false;
-        character.coins -= cost;
-        character.unlockedUltimates.add(item.getId());
-        character.storage.add(serializeItem(item));
-        write();
-        return true;
     }
 
     public synchronized boolean purchaseItem(Player player, Item item, int cost) {
-        if (item == null || item instanceof Ultimate || !item.canBeUsedBy(player) || cost < 0) return false;
+        if (item == null || !item.canBeUsedBy(player) || cost < 0) return false;
         CharacterProgress character = getProgress(characterId(player));
         if (character.coins < cost) return false;
         character.coins -= cost;
@@ -184,7 +167,6 @@ public final class ProgressionStore {
         character.headArmor = serializeItem(player.getHeadArmor());
         character.bodyArmor = serializeItem(player.getBodyArmor());
         character.mainHandIndex = player.getMainHandIndex();
-        character.equippedUltimateId = player.getUltimate() == null ? null : player.getUltimate().getId();
         write();
     }
 
@@ -195,7 +177,6 @@ public final class ProgressionStore {
         character.headArmor = serializeItem(player.getHeadArmor());
         character.bodyArmor = serializeItem(player.getBodyArmor());
         character.mainHandIndex = player.getMainHandIndex();
-        character.equippedUltimateId = player.getUltimate() == null ? null : player.getUltimate().getId();
         character.storage.clear();
         for (Item item : storedItems) character.storage.add(serializeItem(item));
         write();
@@ -204,8 +185,7 @@ public final class ProgressionStore {
     public synchronized void restorePlayer(Player player) {
         java.util.Objects.requireNonNull(player, "player");
         CharacterProgress character = getProgress(characterId(player));
-        if (character.inventory.isEmpty() && character.headArmor == null && character.bodyArmor == null
-                && character.equippedUltimateId == null) return;
+        if (character.inventory.isEmpty() && character.headArmor == null && character.bodyArmor == null) return;
 
         Item[] inventory = new Item[player.getInventory().length];
         for (int i = 0; i < Math.min(inventory.length, character.inventory.size()); i++) {
@@ -215,25 +195,7 @@ public final class ProgressionStore {
         player.setMainHandIndex(Math.max(0, Math.min(inventory.length - 1, character.mainHandIndex)));
         player.equipHead(asArmor(deserializeItem(character.headArmor), Armor.ArmorSlot.HEAD));
         player.equipBody(asArmor(deserializeItem(character.bodyArmor), Armor.ArmorSlot.BODY));
-        String savedUltimateId = Ultimate.migrateLegacyStarterId(character.equippedUltimateId, player);
-        Ultimate restoredUltimate = Ultimate.forId(savedUltimateId);
-        if (restoredUltimate != null && restoredUltimate.canBeUsedBy(player)) player.setUltimate(restoredUltimate);
-    }
-
-    public synchronized boolean unlockAlternateUltimate(Player player) {
-        return unlockUltimate(player, Ultimate.alternateFor(player));
-    }
-
-    public synchronized boolean unlockUltimate(Player player, Ultimate.Type type) {
-        CharacterProgress character = getProgress(characterId(player));
-        Ultimate alternate = new Ultimate(type);
-        if (!alternate.canBeUsedBy(player)) {
-            throw new IllegalArgumentException("Ultimate does not belong to " + player.getClass().getSimpleName());
-        }
-        if (!character.unlockedUltimates.add(alternate.getId())) return false;
-        character.storage.add(serializeItem(alternate));
-        write();
-        return true;
+        // Ultimates are class-bound and initialized by the player class; legacy saved ultimates are ignored.
     }
 
     public synchronized List<Item> getStoredItems(Player player) {
@@ -298,15 +260,11 @@ public final class ProgressionStore {
                 if (storedItems instanceof List) for (Object item : (List<?>) storedItems) character.storage.add(asMap(item));
                 character.headArmor = asMap(data.get("headArmor"));
                 character.bodyArmor = asMap(data.get("bodyArmor"));
-                character.equippedUltimateId = stringValue(data.get("equippedUltimateId"));
-                Object unlocked = data.get("unlockedUltimates");
-                if (unlocked instanceof List) {
-                    for (Object id : (List<?>) unlocked) if (id instanceof String) character.unlockedUltimates.add((String) id);
-                }
                 character.coins = intValue(data.get("coins"), 0);
                 character.activeRun = asMap(data.get("activeRun"));
                 Object hand = data.get("mainHandIndex");
                 if (hand instanceof Number) character.mainHandIndex = ((Number) hand).intValue();
+                // Legacy fields (equippedUltimateId/unlockedUltimates) are intentionally ignored.
                 progress.put((String) entry.getKey(), character);
             }
         } catch (IOException | RuntimeException e) {
@@ -329,8 +287,6 @@ public final class ProgressionStore {
             appendValue(json, character.storage);
             json.append(",\n      \"headArmor\": "); appendValue(json, character.headArmor);
             json.append(",\n      \"bodyArmor\": "); appendValue(json, character.bodyArmor);
-            json.append(",\n      \"equippedUltimateId\": "); appendValue(json, character.equippedUltimateId);
-            json.append(",\n      \"unlockedUltimates\": "); appendValue(json, new ArrayList<>(character.unlockedUltimates));
             json.append(",\n      \"mainHandIndex\": ").append(character.mainHandIndex);
             json.append(",\n      \"coins\": ").append(character.coins);
             json.append(",\n      \"activeRun\": "); appendValue(json, character.activeRun);
@@ -362,8 +318,7 @@ public final class ProgressionStore {
     static Map<String, Object> serializeItem(Item item) {
         if (item == null) return null;
         Map<String, Object> data = new LinkedHashMap<>();
-        if (item instanceof Ultimate) { data.put("type", "ultimate"); data.put("id", ((Ultimate) item).getId()); }
-        else if (item instanceof RogueHood) data.put("type", "rogue-hood");
+        if (item instanceof RogueHood) data.put("type", "rogue-hood");
         else if (item instanceof RogueTunic) data.put("type", "rogue-tunic");
         else if (item instanceof WizardHat) data.put("type", "wizard-hat");
         else if (item instanceof WizardRobe) data.put("type", "wizard-robe");
@@ -375,7 +330,7 @@ public final class ProgressionStore {
         else if (item instanceof Hammer) data.put("type", "hammer");
         else if (item instanceof TankSword) data.put("type", "tank-sword");
         else if (item instanceof HealthPotion) data.put("type", "health-potion");
-        else throw new IllegalArgumentException("Unsupported item type for saving: " + item.getClass().getName());
+        else return null; // unsupported or removed item types (e.g. legacy ultimates)
 
         if (item instanceof Consumable) {
             Consumable consumable = (Consumable) item;
@@ -402,8 +357,8 @@ public final class ProgressionStore {
         if (data == null) return null;
         String type = stringValue(data.get("type"));
         Item item;
-        switch (type) {
-            case "ultimate": item = Ultimate.forId(stringValue(data.get("id"))); break;
+        switch (type == null ? "" : type) {
+            case "ultimate": return null; // legacy ultimate items removed
             case "rogue-hood": item = new RogueHood(); break;
             case "rogue-tunic": item = new RogueTunic(); break;
             case "wizard-hat": item = new WizardHat(); break;
@@ -518,8 +473,6 @@ public final class ProgressionStore {
         int mainHandIndex;
         int coins;
         Map<String, Object> activeRun;
-        String equippedUltimateId;
-        final Set<String> unlockedUltimates = new LinkedHashSet<>();
     }
 
     /** Small JSON parser to keep saves dependency-free. */

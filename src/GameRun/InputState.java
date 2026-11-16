@@ -15,6 +15,7 @@ public final class InputState {
     private int clickXUp = -1;
     private int clickYUp = -1;
     private boolean rightClick;
+    private boolean mouseHeld;
     private int scrollDelta;
 
     public void keyPressed(int keyCode) {
@@ -39,12 +40,16 @@ public final class InputState {
         clickXDown = x;
         clickYDown = y;
         rightClick = rightButton;
+        if (!rightButton) {
+            mouseHeld = true;
+        }
     }
 
     public void mouseReleased(int x, int y) {
         mouseMoved(x, y);
         clickXUp = x;
         clickYUp = y;
+        mouseHeld = false;
     }
 
     public void mouseWheelMoved(int rotation) {
@@ -54,7 +59,7 @@ public final class InputState {
     public InputFrame snapshot() {
         InputFrame frame = new InputFrame(heldKeys, pressedKeys, releasedKeys,
                 mouseX, mouseY, clickXDown, clickYDown, clickXUp, clickYUp,
-                rightClick, scrollDelta);
+                rightClick, mouseHeld, scrollDelta);
         pressedKeys.clear();
         releasedKeys.clear();
         clickXDown = -1;
@@ -75,6 +80,7 @@ public final class InputState {
         clickXUp = -1;
         clickYUp = -1;
         rightClick = false;
+        mouseHeld = false;
         scrollDelta = 0;
     }
 }

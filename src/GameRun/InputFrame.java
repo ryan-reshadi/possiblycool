@@ -15,11 +15,12 @@ public final class InputFrame {
     private final int clickXUp;
     private final int clickYUp;
     private final boolean rightClick;
+    private final boolean mouseHeld;
     private final int scrollDelta;
 
     InputFrame(Set<Integer> heldKeys, Set<Integer> pressedKeys, Set<Integer> releasedKeys,
                int mouseX, int mouseY, int clickXDown, int clickYDown,
-               int clickXUp, int clickYUp, boolean rightClick, int scrollDelta) {
+               int clickXUp, int clickYUp, boolean rightClick, boolean mouseHeld, int scrollDelta) {
         this.heldKeys = Collections.unmodifiableSet(new HashSet<>(heldKeys));
         this.pressedKeys = Collections.unmodifiableSet(new HashSet<>(pressedKeys));
         this.releasedKeys = Collections.unmodifiableSet(new HashSet<>(releasedKeys));
@@ -30,6 +31,7 @@ public final class InputFrame {
         this.clickXUp = clickXUp;
         this.clickYUp = clickYUp;
         this.rightClick = rightClick;
+        this.mouseHeld = mouseHeld;
         this.scrollDelta = scrollDelta;
     }
 
@@ -81,12 +83,16 @@ public final class InputFrame {
         return rightClick;
     }
 
+    public boolean isMouseHeld() {
+        return mouseHeld;
+    }
+
     public int getScrollDelta() {
         return scrollDelta;
     }
 
     InputFrame withoutEdges() {
         return new InputFrame(heldKeys, Collections.emptySet(), Collections.emptySet(),
-                mouseX, mouseY, -1, -1, -1, -1, false, 0);
+                mouseX, mouseY, -1, -1, -1, -1, false, mouseHeld, 0);
     }
 }

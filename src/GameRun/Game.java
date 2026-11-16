@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Map;
 import Objects.PlayerEquipment.Item;
-import Objects.PlayerEquipment.Ultimate;
 
 public class Game {
     private int tickCount;
@@ -146,10 +145,6 @@ public class Game {
 
     public RunRoute getRunRoute() { return runRoute; }
 
-    public boolean ownsUltimate(String id) {
-        return player != null && progressionStore.ownsUltimate(player, id);
-    }
-
     public void enterRouteNode(String nodeId) {
         if (state != GameStates.ROUTE_MAP || runRoute == null || !runRoute.enter(nodeId)) return;
         RunRoute.Node node = runRoute.getPendingNode();
@@ -171,13 +166,8 @@ public class Game {
         if (node.purchased.contains(offerId)) return;
         int price = offer.get("price") instanceof Number ? ((Number) offer.get("price")).intValue() : Integer.MAX_VALUE;
         boolean bought = false;
-        if ("ultimate".equals(offer.get("type"))) {
-            Ultimate power = Ultimate.forId(offer.get("id") instanceof String ? (String) offer.get("id") : null);
-            if (power != null) bought = progressionStore.purchaseUltimate(player, power.getType(), price);
-        } else {
-            Item item = ProgressionStore.deserializeShopItem(offer);
-            if (item != null) bought = progressionStore.purchaseItem(player, item, price);
-        }
+        Item item = ProgressionStore.deserializeShopItem(offer);
+        if (item != null) bought = progressionStore.purchaseItem(player, item, price);
         if (bought) {
             node.purchased.add(offerId);
             progressionStore.savePlayer(player, progressionStore.getStoredItems(player));
@@ -247,7 +237,13 @@ public class Game {
                     String levelId = completed.type == RunRoute.Type.TUTORIAL ? "level-1" : completed.id;
                     progressionStore.completeLevel(player, levelId);
                 }
-                changeState(GameStates.WIN_SCREEN);
+                if (runRoute == null) {
+                    if (player != null) progressionStore.completeLevel(player, "level-1");
+                    currentLevel = null;
+                    changeState(GameStates.INITIALIZED_1);
+                } else {
+                    changeState(GameStates.WIN_SCREEN);
+                }
             }
         }
         if (state == GameStates.ROUTE_MAP) routeMapScreen.update(input);
@@ -380,11 +376,15 @@ public class Game {
                 break;
             case LEVEL_1:
                 if (this.currentLevel == null || this.player == null || this.player.checkpointX < 0) {
-                    RunRoute.Node node = runRoute == null ? null : runRoute.getPendingNode();
-                    if (node == null) throw new IllegalStateException("No route node is selected.");
-                    if (node.type == RunRoute.Type.TUTORIAL) this.currentLevel = new Level1(0, 0, player);
-                    else if (node.type == RunRoute.Type.BOSS) this.currentLevel = new Levels.RunBossRoom(player, runRoute.getStageCount());
-                    else this.currentLevel = new Levels.RunCombatRoom(player, node.stage, runRoute.getSeed() ^ node.id.hashCode());
+                    if (runRoute == null) {
+                        this.currentLevel = createSelectedLevel();
+                    } else {
+                        RunRoute.Node node = runRoute.getPendingNode();
+                        if (node == null) throw new IllegalStateException("No route node is selected.");
+                        if (node.type == RunRoute.Type.TUTORIAL) this.currentLevel = new Level1(0, 0, player);
+                        else if (node.type == RunRoute.Type.BOSS) this.currentLevel = new Levels.RunBossRoom(player, runRoute.getStageCount(), runRoute.getSeed() ^ node.id.hashCode());
+                        else this.currentLevel = new Levels.RunCombatRoom(player, node.stage, runRoute.getSeed() ^ node.id.hashCode());
+                    }
                     this.currentLevel.setProgressSaveListener(this::savePlayerProgress);
                     this.currentLevel.setCoinWallet(this::getPlayerCoins, this::addPlayerCoins);
                     progressionStore.restorePlayer(this.player);

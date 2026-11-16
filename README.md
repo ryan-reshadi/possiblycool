@@ -27,10 +27,12 @@ The test suite is headless and runs during `mvn clean verify`. Continuous integr
 
 - `W`, `A`, `S`, `D`: move
 - `Space`: roll
-- `R`: activate the ultimate when charged
-- `Q`, `E`, `F`: use ability slots
+- `Q`, `E`, `F`: use ability slots (each class starts with two abilities; former class ultimates are now normal abilities)
+- `R`: activate the class ultimate when charged. **Battle Cry** (Tank) is a timed empowered state that can be ended early by pressing `R` again. **A Thousand Cuts** (Rogue) performs a telegraphed dash-slash. **Focused Arc** (Mage) is a timed empowered state that replaces weapon attacks with a held lightning beam while active.
 - `I`: open or close inventory
 - `1`-`9` or the mouse wheel: select a hotbar item
-- Left-click: attack; click a nearby chest to open it
+- Left-click: attack / use held weapon actions; click a nearby chest to open it
+
+During roaming/empowered ultimates, normal abilities remain available unless explicitly overridden. While **Focused Arc** is active, hold left-click to fire the beam (consumables can still be used).
 
 The bottom-right HUD summary shows the selected item's remaining uses and stack count. The `[I] Inventory` hint is displayed at the top-right.

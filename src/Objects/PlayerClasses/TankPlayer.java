@@ -1,8 +1,9 @@
 package Objects.PlayerClasses;
 
+import Objects.PlayerEquipment.Abilities.RallyBarricadeAbility;
 import Objects.PlayerEquipment.Abilities.TankShieldBash;
 import Objects.PlayerEquipment.TankSword;
-import Objects.PlayerEquipment.Ultimate;
+import Objects.PlayerEquipment.Ultimates.BattleCryUltimate;
 
 public class TankPlayer extends Player {
 
@@ -21,6 +22,7 @@ public class TankPlayer extends Player {
         this.inventory[0] = new TankSword();
         this.MainHandIndex = 0;
         this.abilitySlots[0] = new TankShieldBash();
-        setUltimate(new Ultimate(Ultimate.defaultFor(this)));
+        this.abilitySlots[1] = new RallyBarricadeAbility();
+        setUltimate(new BattleCryUltimate());
     }
 }
