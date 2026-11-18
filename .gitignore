@@ -6,3 +6,6 @@
 # Local player progression and atomic-save temporary files
 /.possiblycool/
 player-progress-*.tmp
+
+#graphify
+graphify-out/
