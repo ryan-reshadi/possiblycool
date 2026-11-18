@@ -4,6 +4,7 @@ import Objects.PlayerEquipment.Abilities.RogueShadowStep;
 import Objects.PlayerEquipment.Abilities.TrickstersArrowAbility;
 import Objects.PlayerEquipment.Weapons.Dagger;
 import Objects.PlayerEquipment.Ultimates.AThousandCutsUltimate;
+import java.awt.Color;
 
 public class RoguePlayer extends Player {
 
@@ -13,7 +14,8 @@ public class RoguePlayer extends Player {
         this.rollSpeed = 1.5;
         this.maxRolls = 2;
         this.rolls = 2;
-        this.setImgPath("images/rus.jpg");
+        this.color = new Color(70, 180, 160);
+        this.setImgPath(null);
         giveStartingLoadout();
     }
 

@@ -12,6 +12,8 @@ import Objects.PlayerEquipment.Weapons.Dagger;
 import Objects.PlayerEquipment.Weapons.Wand;
 import Objects.Terrain.*;
 import Objects.Effects.RallyBarricade;
+import Levels.Generation.LevelBlueprint;
+import Levels.Generation.RoomRestriction;
 import ShapeCore.AbilityBarUI;
 import ShapeCore.UltimateBarUI;
 import ShapeCore.HotbarUI;
@@ -50,8 +52,15 @@ public class BaseLevel {
     protected InventoryPanel inventoryPanel = new InventoryPanel();
     protected Runnable progressSaveListener = () -> { };
 
+    protected final List<LevelBlueprint.RoomRegionSpec> roomRegions = new ArrayList<>();
+    protected final List<LevelBlueprint.HazardZoneSpec> hazardZones = new ArrayList<>();
+    protected final java.util.Map<String, Boolean> puzzleSolved = new java.util.HashMap<>();
+    protected final List<java.util.AbstractMap.SimpleEntry<BossDoor, String>> puzzleLocks = new ArrayList<>();
+    protected final List<java.util.AbstractMap.SimpleEntry<BossDoor, String>> itemKeyLocks = new ArrayList<>();
+
     protected int mouseX = 0;
     protected int mouseY = 0;
+    private int hazardTickCounter = 0;
 
     public BaseLevel(int bgX, int bgY, String path, ArrayList<VisualObject> players) {
         this.bgX = bgX;
@@ -212,8 +221,30 @@ public class BaseLevel {
 
         if (this.player != null && !this.player.isDead()) {
             this.player.tickUltimate(this, tickCount, input);
+            // hazard effects
+            hazardTickCounter++;
+            if (hazardTickCounter >= 30) {
+                hazardTickCounter = 0;
+                int cx = player.getX() + player.getWidth()/2;
+                int cy = player.getY() + player.getHeight()/2;
+                for (LevelBlueprint.HazardZoneSpec hz : hazardZones) {
+                    if (hz == null || hz.rect == null) continue;
+                    if (cx >= hz.rect.left() && cx < hz.rect.right() && cy >= hz.rect.top() && cy < hz.rect.bottom()) {
+                        if (hz.effects.contains(LevelBlueprint.HazardEffectType.DAMAGE_OVER_TIME)) {
+                            player.hurt(1);
+                        }
+                        // SLOW effect would require modifying player speed; skip for now
+                    }
+                }
+            }
         }
 
+        // unlock puzzle doors
+        for (java.util.AbstractMap.SimpleEntry<BossDoor, String> pl : puzzleLocks) {
+            if (pl.getKey() != null && pl.getKey().isLocked() && isPuzzleSolved(pl.getValue())) {
+                pl.getKey().unlock();
+            }
+        }
         updateCamera();
         this.processQueuedVisualObjectChanges();
     }
@@ -259,22 +290,33 @@ public class BaseLevel {
                                 input.getClickXDown() + cameraX,
                                 input.getClickYDown() + cameraY);
                     }
+                } else if (obj instanceof PuzzleButton) {
+                    PuzzleButton pb = (PuzzleButton) obj;
+                    if (input.hasMousePress() && !input.isRightClick()) {
+                        pb.tryActivate(this.player);
+                    }
+                } else if (obj instanceof KeyPickup) {
+                    ((KeyPickup) obj).checkPickup(this.player);
                 } else if (obj instanceof DroppedItem) {
                     ((DroppedItem) obj).checkPickup(this.player);
                 }
             }
         }
 
-        if (input.wasPressed(81)) {
-            this.player.tryActivateAbility(0, this, currentTick, mouseX + cameraX, mouseY + cameraY);
+        boolean abilDisabled = isAbilitiesDisabled();
+        boolean ultDisabled = isUltimatesDisabled();
+        if (!abilDisabled) {
+            if (input.wasPressed(81)) {
+                this.player.tryActivateAbility(0, this, currentTick, mouseX + cameraX, mouseY + cameraY);
+            }
+            if (input.wasPressed(69)) {
+                this.player.tryActivateAbility(1, this, currentTick, mouseX + cameraX, mouseY + cameraY);
+            }
+            if (input.wasPressed(70)) {
+                this.player.tryActivateAbility(2, this, currentTick, mouseX + cameraX, mouseY + cameraY);
+            }
         }
-        if (input.wasPressed(69)) {
-            this.player.tryActivateAbility(1, this, currentTick, mouseX + cameraX, mouseY + cameraY);
-        }
-        if (input.wasPressed(70)) {
-            this.player.tryActivateAbility(2, this, currentTick, mouseX + cameraX, mouseY + cameraY);
-        }
-        if (input.wasPressed(82)) {
+        if (!ultDisabled && input.wasPressed(82)) {
             this.player.tryActivateOrRetriggerUltimate(this, currentTick, mouseX + cameraX, mouseY + cameraY);
         }
         return openedChest;
@@ -546,7 +588,23 @@ public class BaseLevel {
         for (VisualObject object : levelVisualObjects.get(1)) {
             if (!(object instanceof Border)) continue;
             if (object instanceof RallyBarricade) continue;
-            if (object instanceof BossDoor && !((BossDoor) object).isLocked()) continue;
+            if (object instanceof BossDoor) {
+                BossDoor bd = (BossDoor) object;
+                if (!bd.isLocked()) continue;
+                // check item key locks
+                boolean unlockedByKey = false;
+                for (java.util.AbstractMap.SimpleEntry<BossDoor, String> ik : itemKeyLocks) {
+                    if (ik.getKey() == bd && player != null && player.hasKey(ik.getValue())) {
+                        player.consumeKey(ik.getValue());
+                        bd.unlock();
+                        unlockedByKey = true;
+                        break;
+                    }
+                }
+                if (unlockedByKey) continue;
+            } else {
+                // not a BossDoor, but still could be other blocking border types? No other special cases now
+            }
 
             Border border = (Border) object;
             if (x < border.getX() + border.getWidth()
@@ -561,6 +619,7 @@ public class BaseLevel {
 
     public void mouseHandler(int clickXDown, int clickYDown, int currentTick) {
         if (clickXDown == -1 || clickYDown == -1 || player == null) return;
+        if (isWeaponAttackDisabled()) return;
         this.player.attack(clickXDown, clickYDown, currentTick);
     }
 
@@ -599,6 +658,71 @@ public class BaseLevel {
 
     public void addButton(ShapeCore.Buttons.Button b) {
         this.levelVisualObjects.get(3).add(b);
+    }
+
+    public void setRoomRegions(List<LevelBlueprint.RoomRegionSpec> regions) {
+        roomRegions.clear();
+        if (regions != null) roomRegions.addAll(regions);
+    }
+
+    public void setHazardZones(List<LevelBlueprint.HazardZoneSpec> zones) {
+        hazardZones.clear();
+        if (zones != null) hazardZones.addAll(zones);
+    }
+
+    public void setPuzzleSolved(String id) {
+        if (id != null && !id.isEmpty()) puzzleSolved.put(id, true);
+    }
+
+    public boolean isPuzzleSolved(String id) {
+        return id != null && Boolean.TRUE.equals(puzzleSolved.get(id));
+    }
+
+    public void addPuzzleLock(BossDoor door, String puzzleId) {
+        if (door == null || puzzleId == null) return;
+        puzzleLocks.add(new java.util.AbstractMap.SimpleEntry<>(door, puzzleId));
+        if (isPuzzleSolved(puzzleId) && door.isLocked()) door.unlock();
+    }
+
+    public void addItemKeyLock(BossDoor door, String keyId) {
+        if (door == null || keyId == null) return;
+        itemKeyLocks.add(new java.util.AbstractMap.SimpleEntry<>(door, keyId));
+    }
+
+    public RoomRestriction getActiveRestrictionForPlayer() {
+        if (player == null) return RoomRestriction.NONE;
+        int cx = player.getX() + player.getWidth() / 2;
+        int cy = player.getY() + player.getHeight() / 2;
+        boolean w = false, a = false, u = false;
+        for (LevelBlueprint.RoomRegionSpec r : roomRegions) {
+            if (r == null || r.rect == null || r.restriction == null) continue;
+            if (cx >= r.rect.left() && cx < r.rect.right() && cy >= r.rect.top() && cy < r.rect.bottom()) {
+                if (r.restriction.disableWeapons) w = true;
+                if (r.restriction.disableAbilities) a = true;
+                if (r.restriction.disableUltimates) u = true;
+            }
+        }
+        for (LevelBlueprint.HazardZoneSpec hz : hazardZones) {
+            if (hz == null || hz.rect == null) continue;
+            if (cx >= hz.rect.left() && cx < hz.rect.right() && cy >= hz.rect.top() && cy < hz.rect.bottom()) {
+                if (hz.disableWeapons) w = true;
+                if (hz.disableAbilitiesUlt) { a = true; u = true; }
+            }
+        }
+        if (!w && !a && !u) return RoomRestriction.NONE;
+        return new RoomRestriction(w, a, u);
+    }
+
+    public boolean isWeaponAttackDisabled() {
+        return getActiveRestrictionForPlayer().disableWeapons;
+    }
+
+    public boolean isAbilitiesDisabled() {
+        return getActiveRestrictionForPlayer().disableAbilities;
+    }
+
+    public boolean isUltimatesDisabled() {
+        return getActiveRestrictionForPlayer().disableUltimates;
     }
 
     public InventoryPanel getInventoryPanel() {

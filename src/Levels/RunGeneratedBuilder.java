@@ -28,6 +28,8 @@ import Objects.Terrain.Border;
 import Objects.Terrain.BossDoor;
 import Objects.Terrain.Checkpoint;
 import Objects.Terrain.Chest;
+import Objects.Terrain.KeyPickup;
+import Objects.Terrain.PuzzleButton;
 
 import java.awt.Color;
 import java.awt.Point;
@@ -90,11 +92,52 @@ final class RunGeneratedBuilder {
             }
             level.addBorder(door);
         }
+        // Additive lock placements
+        for (LevelBlueprint.LockPlacement lp : bp.lockPlacements) {
+            if (lp == null || lp.lock == null || lp.doorRect == null) continue;
+            if (lp.lock instanceof Levels.Generation.LockSpec.KillGuardLock) {
+                Levels.Generation.LockSpec.KillGuardLock kgl = (Levels.Generation.LockSpec.KillGuardLock) lp.lock;
+                List<Enemy> guards = new ArrayList<>();
+                for (int idx : kgl.guardEnemyIndices) {
+                    if (idx >= 0 && idx < spawned.size()) guards.add(spawned.get(idx));
+                }
+                BossDoor door = new BossDoor(lp.doorRect.x, lp.doorRect.y, lp.doorRect.w, lp.doorRect.h, () -> { });
+                if (guards.isEmpty()) {
+                    door.unlock();
+                } else {
+                    for (Enemy guard : guards) {
+                        chainOnDeath(level, guard, () -> {
+                            for (Enemy g : guards) if (!g.isDead()) return;
+                            if (door.isLocked()) door.unlock();
+                        }, ctx.random);
+                    }
+                }
+                level.addBorder(door);
+            } else if (lp.lock instanceof Levels.Generation.LockSpec.PuzzleLock) {
+                Levels.Generation.LockSpec.PuzzleLock pl = (Levels.Generation.LockSpec.PuzzleLock) lp.lock;
+                BossDoor door = new BossDoor(lp.doorRect.x, lp.doorRect.y, lp.doorRect.w, lp.doorRect.h, () -> { });
+                level.addBorder(door);
+                level.addPuzzleLock(door, pl.puzzleId);
+            } else if (lp.lock instanceof Levels.Generation.LockSpec.ItemKeyLock) {
+                Levels.Generation.LockSpec.ItemKeyLock ik = (Levels.Generation.LockSpec.ItemKeyLock) lp.lock;
+                BossDoor door = new BossDoor(lp.doorRect.x, lp.doorRect.y, lp.doorRect.w, lp.doorRect.h, () -> { });
+                level.addBorder(door);
+                level.addItemKeyLock(door, ik.keyId);
+            }
+        }
 
         for (Point p : bp.checkpoints) {
             level.queueAddVisualObject(new Checkpoint(p.x, p.y, () -> {
                 if (player != null) player.saveCheckpoint();
             }));
+        }
+        for (LevelBlueprint.PuzzleButtonSpec pb : bp.puzzleButtons) {
+            level.queueAddVisualObject(new PuzzleButton(pb.x, pb.y, pb.puzzleId, level::setPuzzleSolved));
+        }
+        for (LevelBlueprint.KeyPickupSpec kp : bp.keyPickups) {
+            if (player != null) {
+                level.queueAddVisualObject(new KeyPickup(kp.x, kp.y, kp.keyId, player::grantKey));
+            }
         }
 
         for (LevelBlueprint.ChestSpec c : bp.chests) {
@@ -113,7 +156,15 @@ final class RunGeneratedBuilder {
 
         if (bp.boss != null) {
             BossEnemy boss = new BossEnemy(bp.boss.x, bp.boss.y);
-            boss.setHealth(bp.boss.health);
+            int bossHealth = bp.boss.health;
+            try {
+                Levels.Generation.BossPool pool = Levels.Generation.BossPool.defaultPool();
+                Levels.Generation.BossDefinition bd = pool.pick(ctx.random);
+                bossHealth = bd.baseHealth + Math.max(0, ctx.stageCount - 8) * bd.healthPerStage + ctx.stage * 10;
+            } catch (Exception ignored) {
+                // keep bp.boss.health
+            }
+            boss.setHealth(bossHealth);
             boss.setWeapon(new RangedWeapon(16 + ctx.difficulty(), 70, 500, 7.0));
             chainOnDeath(level, boss, null, ctx.random);
             level.addEnemy(boss);
@@ -122,6 +173,8 @@ final class RunGeneratedBuilder {
             level.objective = lvl -> lvl.getEnemies().isEmpty();
         }
 
+        level.setRoomRegions(bp.roomRegions);
+        level.setHazardZones(bp.hazardZones);
         if (player != null) {
             player.setX(bp.playerSpawn.x);
             player.setY(bp.playerSpawn.y);

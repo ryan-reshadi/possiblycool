@@ -56,13 +56,12 @@ public class Player extends Entity {
 
     // ── Inventory panel toggle key debounce ────────────────────────────────
     public boolean inventoryOpen = false;
+    private final java.util.Set<String> keys = new java.util.HashSet<>();
 
     public Player(int x, int y, int maxHealth) {
-        super(x, y, "images/rus.jpg");
+        super(x, y, 50, 50, new Color(120, 120, 140));
         this.maxHealth = maxHealth;
         this.health = maxHealth;
-        this.width = 50;
-        this.height = 50;
         this.hitbox = new Rectangle2D.Double(x, y, width, height);
     }
 
@@ -402,4 +401,21 @@ public class Player extends Entity {
     public Armor getBodyArmor() { return bodyArmor; }
     public boolean isInventoryOpen() { return inventoryOpen; }
     public void setInventoryOpen(boolean open) { this.inventoryOpen = open; }
+
+    public void grantKey(String keyId) {
+        if (keyId != null && !keyId.isEmpty()) keys.add(keyId);
+    }
+
+    public boolean hasKey(String keyId) {
+        return keyId != null && keys.contains(keyId);
+    }
+
+    public boolean consumeKey(String keyId) {
+        if (keyId == null) return false;
+        return keys.remove(keyId);
+    }
+
+    public java.util.Set<String> getKeys() {
+        return java.util.Collections.unmodifiableSet(keys);
+    }
 }

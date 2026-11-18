@@ -16,9 +16,16 @@ import java.util.Set;
  */
 public final class LayoutGenerator {
     private static final int WALL = 20;
-    private static final int GAP = 120; // doorway/corridor width, wide enough for AI/player
+    private static final int GAP_DEFAULT = 120; // doorway/corridor width default
     private static final int MARGIN = 180;
     private static final int CELL = 20;
+
+    private static int corridorWidthFromHint(String hint) {
+        if (hint == null) return GAP_DEFAULT;
+        if ("NARROW".equalsIgnoreCase(hint)) return 80;
+        if ("WIDE".equalsIgnoreCase(hint)) return 160;
+        return GAP_DEFAULT;
+    }
 
     private LayoutGenerator() {}
 
@@ -91,14 +98,15 @@ public final class LayoutGenerator {
 
         List<Connection> connections = new ArrayList<>();
         for (int i = 0; i < roomCount - 1; i++) {
-            connections.add(connectRooms(layout, i, i + 1));
+            int w = (i == roomCount - 2) ? corridorWidthFromHint("WIDE") : GAP_DEFAULT; // climax approach a bit wider
+            connections.add(connectRooms(layout, i, i + 1, w));
         }
 
         // Optional side reward room off room 1 or 2 (only if non-overlapping placement exists)
         int sideIndex = -1;
         if (roomCount >= 4) {
             int host = 1 + r.nextInt(Math.min(2, roomCount - 2));
-            sideIndex = tryPlaceSideRoom(layout, connections, host, r);
+            sideIndex = tryPlaceSideRoomWithWidth(layout, connections, host, r, 90);
         }
 
         for (Connection c : connections) layout.corridors.addAll(c.segments);
@@ -147,6 +155,10 @@ public final class LayoutGenerator {
     }
 
     private static int tryPlaceSideRoom(Layout layout, List<Connection> connections, int host, Random r) {
+        return tryPlaceSideRoom(layout, connections, host, r, GAP_DEFAULT);
+    }
+
+    private static int tryPlaceSideRoomWithWidth(Layout layout, List<Connection> connections, int host, Random r, int width) {
         Rect hostRect = layout.rooms.get(host);
         int sw = 340, sh = 300;
         boolean preferUp = hostRect.centerY() > layout.bp.height / 2;
@@ -161,7 +173,7 @@ public final class LayoutGenerator {
                 if (overlapsAny(candidate, layout.rooms, 40)) continue;
                 layout.addRoom(candidate);
                 int sideIndex = layout.rooms.size() - 1;
-                connections.add(connectRooms(layout, host, sideIndex));
+                connections.add(connectRooms(layout, host, sideIndex, width));
                 return sideIndex;
             }
         }
@@ -174,7 +186,7 @@ public final class LayoutGenerator {
         return false;
     }
 
-    private static Rect doorBarrierRect(Rect room, Door d) {
+    static Rect doorBarrierRect(Rect room, Door d) {
         switch (d.side) {
             case RIGHT: return new Rect(room.right() - WALL, room.y + d.offset, WALL, d.len);
             case LEFT: return new Rect(room.x, room.y + d.offset, WALL, d.len);
@@ -187,26 +199,49 @@ public final class LayoutGenerator {
     private static LevelBlueprint tryGenerateBoss(GenerationContext ctx, int attempt) {
         Random r = new Random(ctx.random.nextLong() ^ (attempt * 0xA24BAED4963EE407L));
         Layout layout = new Layout();
-        layout.bp.width = 2800;
+        layout.bp.width = 3600;
         layout.bp.height = 1400;
-        Rect start = new Rect(220, 450, 420, 500);
-        Rect antechamber = new Rect(940, 350, 520, 700);
-        Rect arena = new Rect(1700, 250, 900, 900);
-        layout.addRoom(start);      // 0
-        layout.addRoom(antechamber);// 1
-        layout.addRoom(arena);      // 2
+        Rect start = new Rect(220, 450, 420, 500);          // 0
+        Rect puzzle1 = new Rect(820, 400, 420, 600);        // 1
+        Rect puzzle2 = new Rect(1420, 350, 520, 700);       // 2
+        Rect arena = new Rect(2200, 250, 900, 900);         // 3
+        layout.addRoom(start);
+        layout.addRoom(puzzle1);
+        layout.addRoom(puzzle2);
+        layout.addRoom(arena);
+
+        layout.bp.roomRegions.add(new LevelBlueprint.RoomRegionSpec(puzzle1, RoomRestriction.NO_COMBAT_ACTIONS, 1));
+        layout.bp.roomRegions.add(new LevelBlueprint.RoomRegionSpec(puzzle2, RoomRestriction.NO_COMBAT_ACTIONS, 2));
 
         List<Connection> connections = new ArrayList<>();
         connections.add(connectRooms(layout, 0, 1));
         connections.add(connectRooms(layout, 1, 2));
+        connections.add(connectRooms(layout, 2, 3));
         for (Connection c : connections) layout.corridors.addAll(c.segments);
+        layout.bp.corridors.addAll(layout.corridors);
         buildWalls(layout);
 
-        layout.bp.playerSpawn = new Point(start.centerX() - 20, start.centerY() - 20);
-        layout.bp.checkpoints.add(new Point(antechamber.centerX(), antechamber.bottom() - 60));
+        // Puzzles: maze in puzzle1 (goal button solves), button in puzzle2
+        // Maze walls (simple) added to walls
+        List<Rect> mazeWalls = MazeGenerator.generateMazeWalls(puzzle1.inset(30), 60, r);
+        for (Rect mw : mazeWalls) layout.bp.walls.add(mw);
+        // Goal button in puzzle1 (far from entry side) solves boss_puzzle_1
+        layout.bp.puzzleButtons.add(new LevelBlueprint.PuzzleButtonSpec(puzzle1.right() - 60, puzzle1.centerY() - 16, "boss_puzzle_1"));
+        Door d12 = findDoorToward(layout, 1, 2, Side.RIGHT);
+        if (d12 != null) {
+            layout.bp.lockPlacements.add(new LevelBlueprint.LockPlacement(doorBarrierRect(puzzle1, d12), new LockSpec.PuzzleLock(LockSpec.PuzzleType.MAZE, "boss_puzzle_1"), 1));
+        }
+        // Button puzzle in puzzle2
+        layout.bp.puzzleButtons.add(new LevelBlueprint.PuzzleButtonSpec(puzzle2.centerX() - 16, puzzle2.centerY() - 16, "boss_puzzle_2"));
+        Door d23 = findDoorToward(layout, 2, 3, Side.RIGHT);
+        if (d23 != null) {
+            layout.bp.lockPlacements.add(new LevelBlueprint.LockPlacement(doorBarrierRect(puzzle2, d23), new LockSpec.PuzzleLock(LockSpec.PuzzleType.BUTTONS, "boss_puzzle_2"), 2));
+        }
 
-        placeEnemies(layout.bp, ctx, r, antechamber, 1, Math.min(3, 1 + ctx.stage / 3), false, false, null);
-        placeEnemies(layout.bp, ctx, r, arena, 2, Math.min(2, 1 + ctx.stage / 4), false, false, null);
+        layout.bp.playerSpawn = new Point(start.centerX() - 20, start.centerY() - 20);
+        layout.bp.checkpoints.add(new Point(puzzle2.centerX(), puzzle2.bottom() - 60));
+
+        placeEnemies(layout.bp, ctx, r, puzzle2, 2, Math.min(2, 1 + ctx.stage / 4), false, false, null);
 
         int bossHealth = 260 + Math.max(0, ctx.stageCount - 8) * 30 + ctx.stage * 10;
         layout.bp.boss = new LevelBlueprint.BossSpec(arena.centerX() - 20, arena.centerY() - 20, bossHealth);
@@ -223,6 +258,7 @@ public final class LayoutGenerator {
         List<Connection> connections = new ArrayList<>();
         for (int i = 0; i < count - 1; i++) connections.add(connectRooms(layout, i, i + 1));
         for (Connection c : connections) layout.corridors.addAll(c.segments);
+        layout.bp.corridors.addAll(layout.corridors);
         buildWalls(layout);
         Rect start = layout.rooms.get(0);
         layout.bp.playerSpawn = new Point(start.centerX() - 20, start.centerY() - 20);
@@ -246,26 +282,51 @@ public final class LayoutGenerator {
 
     private static LevelBlueprint fallbackBoss(GenerationContext ctx) {
         Layout layout = new Layout();
-        layout.bp.width = 2400; layout.bp.height = 1200;
-        layout.addRoom(new Rect(220, 380, 420, 440));   // 0
-        layout.addRoom(new Rect(900, 300, 520, 600));   // 1
-        layout.addRoom(new Rect(1600, 260, 700, 680));  // 2
+        layout.bp.width = 3200; layout.bp.height = 1200;
+        Rect start = new Rect(220, 380, 420, 440);
+        Rect puzzle1 = new Rect(800, 320, 400, 560);
+        Rect puzzle2 = new Rect(1400, 280, 500, 640);
+        Rect arena = new Rect(2200, 260, 700, 680);
+        layout.addRoom(start);
+        layout.addRoom(puzzle1);
+        layout.addRoom(puzzle2);
+        layout.addRoom(arena);
+        layout.bp.roomRegions.add(new LevelBlueprint.RoomRegionSpec(puzzle1, RoomRestriction.NO_COMBAT_ACTIONS, 1));
+        layout.bp.roomRegions.add(new LevelBlueprint.RoomRegionSpec(puzzle2, RoomRestriction.NO_COMBAT_ACTIONS, 2));
         List<Connection> connections = new ArrayList<>();
         connections.add(connectRooms(layout, 0, 1));
         connections.add(connectRooms(layout, 1, 2));
+        connections.add(connectRooms(layout, 2, 3));
         for (Connection c : connections) layout.corridors.addAll(c.segments);
+        layout.bp.corridors.addAll(layout.corridors);
         buildWalls(layout);
-        layout.bp.playerSpawn = new Point(layout.rooms.get(0).centerX() - 20, layout.rooms.get(0).centerY() - 20);
-        layout.bp.checkpoints.add(new Point(layout.rooms.get(1).centerX(), layout.rooms.get(1).bottom() - 60));
+        List<Rect> mazeWalls = MazeGenerator.generateMazeWalls(puzzle1.inset(20), 50, r);
+        for (Rect mw : mazeWalls) layout.bp.walls.add(mw);
+        layout.bp.puzzleButtons.add(new LevelBlueprint.PuzzleButtonSpec(puzzle1.right() - 50, puzzle1.centerY() - 16, "boss_puzzle_1"));
+        Door d12 = findDoorToward(layout, 1, 2, Side.RIGHT);
+        if (d12 != null) {
+            layout.bp.lockPlacements.add(new LevelBlueprint.LockPlacement(doorBarrierRect(puzzle1, d12), new LockSpec.PuzzleLock(LockSpec.PuzzleType.MAZE, "boss_puzzle_1"), 1));
+        }
+        layout.bp.puzzleButtons.add(new LevelBlueprint.PuzzleButtonSpec(puzzle2.centerX() - 16, puzzle2.centerY() - 16, "boss_puzzle_2"));
+        Door d23 = findDoorToward(layout, 2, 3, Side.RIGHT);
+        if (d23 != null) {
+            layout.bp.lockPlacements.add(new LevelBlueprint.LockPlacement(doorBarrierRect(puzzle2, d23), new LockSpec.PuzzleLock(LockSpec.PuzzleType.BUTTONS, "boss_puzzle_2"), 2));
+        }
+        layout.bp.playerSpawn = new Point(start.centerX() - 20, start.centerY() - 20);
+        layout.bp.checkpoints.add(new Point(puzzle2.centerX(), puzzle2.bottom() - 60));
         Random r = new Random(ctx.seed ^ 0xB055L);
-        placeEnemies(layout.bp, ctx, r, layout.rooms.get(1), 1, 2, false, false, null);
+        placeEnemies(layout.bp, ctx, r, puzzle2, 2, 2, false, false, null);
         int bossHealth = 260 + Math.max(0, ctx.stageCount - 8) * 30 + ctx.stage * 10;
-        layout.bp.boss = new LevelBlueprint.BossSpec(layout.rooms.get(2).centerX() - 20, layout.rooms.get(2).centerY() - 20, bossHealth);
+        layout.bp.boss = new LevelBlueprint.BossSpec(arena.centerX() - 20, arena.centerY() - 20, bossHealth);
         return layout.bp;
     }
 
     /** Create an explicit, walled connection between two rooms with declared doorways. */
     private static Connection connectRooms(Layout layout, int aIdx, int bIdx) {
+        return connectRooms(layout, aIdx, bIdx, GAP_DEFAULT);
+    }
+
+    private static Connection connectRooms(Layout layout, int aIdx, int bIdx, int gapWidth) {
         Rect a = layout.rooms.get(aIdx);
         Rect b = layout.rooms.get(bIdx);
         int dx = b.centerX() - a.centerX();
@@ -278,66 +339,64 @@ public final class LayoutGenerator {
             sideA = dy >= 0 ? Side.BOTTOM : Side.TOP;
             sideB = dy >= 0 ? Side.TOP : Side.BOTTOM;
         }
-        int offA = doorOffset(a, sideA, b);
-        int offB = doorOffset(b, sideB, a);
-        layout.addDoor(aIdx, new Door(sideA, offA, GAP));
-        layout.addDoor(bIdx, new Door(sideB, offB, GAP));
+        int offA = doorOffset(a, sideA, b, gapWidth);
+        int offB = doorOffset(b, sideB, a, gapWidth);
+        layout.addDoor(aIdx, new Door(sideA, offA, gapWidth));
+        layout.addDoor(bIdx, new Door(sideB, offB, gapWidth));
         Connection c = new Connection(aIdx, sideA, offA, bIdx, sideB, offB);
-        Point pa = doorPoint(a, sideA, offA);
-        Point pb = doorPoint(b, sideB, offB);
-        buildPathSegments(c, pa, sideA, pb, sideB);
+        Point pa = doorPoint(a, sideA, offA, gapWidth);
+        Point pb = doorPoint(b, sideB, offB, gapWidth);
+        buildPathSegments(c, pa, sideA, pb, sideB, gapWidth);
         return c;
     }
 
-    private static int doorOffset(Rect room, Side side, Rect toward) {
+    private static int doorOffset(Rect room, Side side, Rect toward, int gapWidth) {
         if (side == Side.LEFT || side == Side.RIGHT) {
-            int target = toward.centerY() - GAP / 2 - room.y;
-            return clamp(target, WALL, room.h - WALL - GAP);
+            int target = toward.centerY() - gapWidth / 2 - room.y;
+            return clamp(target, WALL, room.h - WALL - gapWidth);
         } else {
-            int target = toward.centerX() - GAP / 2 - room.x;
-            return clamp(target, WALL, room.w - WALL - GAP);
+            int target = toward.centerX() - gapWidth / 2 - room.x;
+            return clamp(target, WALL, room.w - WALL - gapWidth);
         }
     }
 
     /** Point just outside the room at the doorway's leading edge (start of corridor). */
-    private static Point doorPoint(Rect room, Side side, int offset) {
+    private static Point doorPoint(Rect room, Side side, int offset, int gapWidth) {
         switch (side) {
             case RIGHT: return new Point(room.right(), room.y + offset);
-            case LEFT: return new Point(room.x - GAP, room.y + offset); // corridor rect will extend leftward
+            case LEFT: return new Point(room.x - gapWidth, room.y + offset);
             case BOTTOM: return new Point(room.x + offset, room.bottom());
-            case TOP: return new Point(room.x + offset, room.y - GAP);
+            case TOP: return new Point(room.x + offset, room.y - gapWidth);
             default: throw new IllegalArgumentException();
         }
     }
 
-    private static void buildPathSegments(Connection c, Point pa, Side sideA, Point pb, Side sideB) {
-        // pa/pb are the corridor-rect origins adjacent to each room opening.
+    private static void buildPathSegments(Connection c, Point pa, Side sideA, Point pb, Side sideB, int gapWidth) {
         if ((sideA == Side.RIGHT && sideB == Side.LEFT) || (sideA == Side.LEFT && sideB == Side.RIGHT)) {
             int y1 = pa.y, y2 = pb.y;
-            int x1 = sideA == Side.RIGHT ? pa.x : pb.x; // left end (outside right-side room)
-            int x2 = sideA == Side.RIGHT ? pb.x : pa.x; // right end origin near left-side room
-            int corridorRight = x2 + GAP; // pb is origin at left side of room B (x = roomB.x - GAP)
-            int midX = x1 + (corridorRight - x1) / 2 - GAP / 2;
-            midX = Math.max(x1, Math.min(corridorRight - GAP, midX));
-            c.segments.add(rectFrom(x1, y1, midX + GAP, y1 + GAP));
+            int x1 = sideA == Side.RIGHT ? pa.x : pb.x;
+            int x2 = sideA == Side.RIGHT ? pb.x : pa.x;
+            int corridorRight = x2 + gapWidth;
+            int midX = x1 + (corridorRight - x1) / 2 - gapWidth / 2;
+            midX = Math.max(x1, Math.min(corridorRight - gapWidth, midX));
+            c.segments.add(rectFrom(x1, y1, midX + gapWidth, y1 + gapWidth));
             int ry = Math.min(y1, y2);
-            c.segments.add(rectFrom(midX, ry, midX + GAP, ry + Math.abs(y2 - y1) + GAP));
-            c.segments.add(rectFrom(midX, y2, corridorRight, y2 + GAP));
+            c.segments.add(rectFrom(midX, ry, midX + gapWidth, ry + Math.abs(y2 - y1) + gapWidth));
+            c.segments.add(rectFrom(midX, y2, corridorRight, y2 + gapWidth));
         } else if ((sideA == Side.BOTTOM && sideB == Side.TOP) || (sideA == Side.TOP && sideB == Side.BOTTOM)) {
             int x1 = pa.x, x2 = pb.x;
-            int y1 = sideA == Side.BOTTOM ? pa.y : pb.y; // top end
-            int y2 = sideA == Side.BOTTOM ? pb.y : pa.y; // bottom end origin near top-side room
-            int corridorBottom = y2 + GAP;
-            int midY = y1 + (corridorBottom - y1) / 2 - GAP / 2;
-            midY = Math.max(y1, Math.min(corridorBottom - GAP, midY));
-            c.segments.add(rectFrom(x1, y1, x1 + GAP, midY + GAP));
+            int y1 = sideA == Side.BOTTOM ? pa.y : pb.y;
+            int y2 = sideA == Side.BOTTOM ? pb.y : pa.y;
+            int corridorBottom = y2 + gapWidth;
+            int midY = y1 + (corridorBottom - y1) / 2 - gapWidth / 2;
+            midY = Math.max(y1, Math.min(corridorBottom - gapWidth, midY));
+            c.segments.add(rectFrom(x1, y1, x1 + gapWidth, midY + gapWidth));
             int rx = Math.min(x1, x2);
-            c.segments.add(rectFrom(rx, midY, rx + Math.abs(x2 - x1) + GAP, midY + GAP));
-            c.segments.add(rectFrom(x2, midY, x2 + GAP, corridorBottom));
+            c.segments.add(rectFrom(rx, midY, rx + Math.abs(x2 - x1) + gapWidth, midY + gapWidth));
+            c.segments.add(rectFrom(x2, midY, x2 + gapWidth, corridorBottom));
         } else {
-            // Fallback L-shape for uncommon side pairings
-            c.segments.add(rectFrom(Math.min(pa.x, pb.x), pa.y, Math.max(pa.x, pb.x) + GAP, pa.y + GAP));
-            c.segments.add(rectFrom(pb.x, Math.min(pa.y, pb.y), pb.x + GAP, Math.max(pa.y, pb.y) + GAP));
+            c.segments.add(rectFrom(Math.min(pa.x, pb.x), pa.y, Math.max(pa.x, pb.x) + gapWidth, pa.y + gapWidth));
+            c.segments.add(rectFrom(pb.x, Math.min(pa.y, pb.y), pb.x + gapWidth, Math.max(pa.y, pb.y) + gapWidth));
         }
         c.segments.removeIf(s -> s.w <= 0 || s.h <= 0);
     }
@@ -347,8 +406,7 @@ public final class LayoutGenerator {
         return new Rect(rx, ry, Math.max(1, x2 - rx), Math.max(1, y2 - ry));
     }
 
-    private static Door findDoorToward(Layout layout, int fromRoom, int toRoom, Side preferred) {
-        // find door on fromRoom whose side points roughly toward toRoom
+    static Door findDoorToward(Layout layout, int fromRoom, int toRoom, Side preferred) {
         Rect from = layout.rooms.get(fromRoom);
         Rect to = layout.rooms.get(toRoom);
         Side want;
@@ -386,10 +444,10 @@ public final class LayoutGenerator {
     /** Area spanning the doorway/opening where corridor meets room interior boundary. */
     private static Rect mouthRect(Rect room, Door d) {
         switch (d.side) {
-            case RIGHT: return new Rect(room.right() - WALL, room.y + d.offset, WALL + GAP, d.len);
-            case LEFT: return new Rect(room.x - GAP, room.y + d.offset, GAP + WALL, d.len);
-            case BOTTOM: return new Rect(room.x + d.offset, room.bottom() - WALL, d.len, WALL + GAP);
-            case TOP: return new Rect(room.x + d.offset, room.y - GAP, d.len, GAP + WALL);
+            case RIGHT: return new Rect(room.right() - WALL, room.y + d.offset, WALL + d.len, d.len);
+            case LEFT: return new Rect(room.x - d.len, room.y + d.offset, d.len + WALL, d.len);
+            case BOTTOM: return new Rect(room.x + d.offset, room.bottom() - WALL, d.len, WALL + d.len);
+            case TOP: return new Rect(room.x + d.offset, room.y - d.len, d.len, d.len + WALL);
             default: throw new IllegalArgumentException();
         }
     }
