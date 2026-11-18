@@ -155,7 +155,7 @@ public final class LayoutGenerator {
     }
 
     private static int tryPlaceSideRoom(Layout layout, List<Connection> connections, int host, Random r) {
-        return tryPlaceSideRoom(layout, connections, host, r, GAP_DEFAULT);
+        return tryPlaceSideRoomWithWidth(layout, connections, host, r, GAP_DEFAULT);
     }
 
     private static int tryPlaceSideRoomWithWidth(Layout layout, List<Connection> connections, int host, Random r, int width) {
@@ -222,11 +222,16 @@ public final class LayoutGenerator {
         buildWalls(layout);
 
         // Puzzles: maze in puzzle1 (goal button solves), button in puzzle2
-        // Maze walls (simple) added to walls
-        List<Rect> mazeWalls = MazeGenerator.generateMazeWalls(puzzle1.inset(30), 60, r);
+        // Maze walls
+        Rect mazeArea = puzzle1.inset(30);
+        List<Rect> mazeWalls = MazeGenerator.generateMazeWalls(mazeArea, 60, r);
         for (Rect mw : mazeWalls) layout.bp.walls.add(mw);
-        // Goal button in puzzle1 (far from entry side) solves boss_puzzle_1
-        layout.bp.puzzleButtons.add(new LevelBlueprint.PuzzleButtonSpec(puzzle1.right() - 60, puzzle1.centerY() - 16, "boss_puzzle_1"));
+        // Place portal in rightmost middle cell of maze grid (forced open band)
+        int cols = Math.max(4, mazeArea.w / 60);
+        int rows = Math.max(4, mazeArea.h / 60);
+        int portalX = mazeArea.x + (cols - 1) * 60 + 8;
+        int portalY = mazeArea.y + (rows / 2) * 60 + 8;
+        layout.bp.mazeExits.add(new LevelBlueprint.MazeExitPortalSpec(portalX, portalY, 44, 44, "boss_puzzle_1"));
         Door d12 = findDoorToward(layout, 1, 2, Side.RIGHT);
         if (d12 != null) {
             layout.bp.lockPlacements.add(new LevelBlueprint.LockPlacement(doorBarrierRect(puzzle1, d12), new LockSpec.PuzzleLock(LockSpec.PuzzleType.MAZE, "boss_puzzle_1"), 1));
@@ -282,6 +287,7 @@ public final class LayoutGenerator {
 
     private static LevelBlueprint fallbackBoss(GenerationContext ctx) {
         Layout layout = new Layout();
+        Random r = new Random(ctx.seed ^ 0xB055L);
         layout.bp.width = 3200; layout.bp.height = 1200;
         Rect start = new Rect(220, 380, 420, 440);
         Rect puzzle1 = new Rect(800, 320, 400, 560);
@@ -300,9 +306,14 @@ public final class LayoutGenerator {
         for (Connection c : connections) layout.corridors.addAll(c.segments);
         layout.bp.corridors.addAll(layout.corridors);
         buildWalls(layout);
-        List<Rect> mazeWalls = MazeGenerator.generateMazeWalls(puzzle1.inset(20), 50, r);
+        Rect mazeArea2 = puzzle1.inset(20);
+        List<Rect> mazeWalls = MazeGenerator.generateMazeWalls(mazeArea2, 50, r);
         for (Rect mw : mazeWalls) layout.bp.walls.add(mw);
-        layout.bp.puzzleButtons.add(new LevelBlueprint.PuzzleButtonSpec(puzzle1.right() - 50, puzzle1.centerY() - 16, "boss_puzzle_1"));
+        int cols2 = Math.max(4, mazeArea2.w / 50);
+        int rows2 = Math.max(4, mazeArea2.h / 50);
+        int portalX2 = mazeArea2.x + (cols2 - 1) * 50 + 6;
+        int portalY2 = mazeArea2.y + (rows2 / 2) * 50 + 6;
+        layout.bp.mazeExits.add(new LevelBlueprint.MazeExitPortalSpec(portalX2, portalY2, 38, 38, "boss_puzzle_1"));
         Door d12 = findDoorToward(layout, 1, 2, Side.RIGHT);
         if (d12 != null) {
             layout.bp.lockPlacements.add(new LevelBlueprint.LockPlacement(doorBarrierRect(puzzle1, d12), new LockSpec.PuzzleLock(LockSpec.PuzzleType.MAZE, "boss_puzzle_1"), 1));
@@ -314,7 +325,6 @@ public final class LayoutGenerator {
         }
         layout.bp.playerSpawn = new Point(start.centerX() - 20, start.centerY() - 20);
         layout.bp.checkpoints.add(new Point(puzzle2.centerX(), puzzle2.bottom() - 60));
-        Random r = new Random(ctx.seed ^ 0xB055L);
         placeEnemies(layout.bp, ctx, r, puzzle2, 2, 2, false, false, null);
         int bossHealth = 260 + Math.max(0, ctx.stageCount - 8) * 30 + ctx.stage * 10;
         layout.bp.boss = new LevelBlueprint.BossSpec(arena.centerX() - 20, arena.centerY() - 20, bossHealth);

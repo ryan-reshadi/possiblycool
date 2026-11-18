@@ -9,6 +9,7 @@ import java.awt.Graphics2D;
 public final class UltimateBarUI {
     public void draw(Graphics g, Ultimate ultimate, double charge, int screenWidth, int screenHeight) {
         Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
         int width = 300;
         int x = (screenWidth - width) / 2;
         int y = screenHeight - 200;
@@ -24,10 +25,16 @@ public final class UltimateBarUI {
         Color base = ultimate == null ? Color.GRAY : ultimate.getIconColor();
         Color fill = active ? new Color(255, 210, 90) : base;
         Color labelColor = active ? new Color(255, 230, 140) : base;
+        boolean ready = !active && progress >= 1.0;
 
-        g2d.setColor(new Color(20, 20, 28, 205));
+        if (ready || active) {
+            g2d.setColor(new Color(255, 200, 80, active ? 50 : 30));
+            g2d.fillRoundRect(x - 14, y - 28, width + 28, 64, 14, 14);
+        }
+
+        g2d.setColor(new Color(18, 18, 30, 220));
         g2d.fillRoundRect(x - 10, y - 25, width + 20, 56, 10, 10);
-        g2d.setColor(new Color(70, 70, 88));
+        g2d.setColor(active ? new Color(255, 210, 90) : new Color(120, 100, 180));
         g2d.drawRoundRect(x - 10, y - 25, width + 20, 56, 10, 10);
 
         g2d.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -44,10 +51,12 @@ public final class UltimateBarUI {
         g2d.setColor(progress >= 1.0 || active ? new Color(255, 225, 95) : new Color(190, 195, 210));
         g2d.drawString(hint, x + width - g2d.getFontMetrics().stringWidth(hint), y - 7);
 
-        g2d.setColor(new Color(48, 43, 60));
+        g2d.setColor(new Color(40, 38, 55));
         g2d.fillRoundRect(x, y, width, 14, 7, 7);
         g2d.setColor(fill);
-        g2d.fillRoundRect(x, y, (int) Math.round(width * progress), 14, 7, 7);
+        g2d.fillRoundRect(x, y, Math.max(4, (int) Math.round(width * progress)), 14, 7, 7);
+        g2d.setColor(new Color(255, 255, 255, 80));
+        g2d.fillRoundRect(x + 2, y + 2, Math.max(2, (int) Math.round(width * progress) - 4), 4, 3, 3);
         g2d.setColor(Color.WHITE);
         g2d.drawRoundRect(x, y, width, 14, 7, 7);
 

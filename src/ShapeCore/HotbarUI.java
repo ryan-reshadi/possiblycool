@@ -41,6 +41,8 @@ public class HotbarUI {
 
             // Active slot gold highlight
             if (i == activeIndex) {
+                g2d.setColor(new Color(255, 215, 0, 40));
+                g2d.fillRoundRect(slotX - 2, slotY - 2, slotSize + 4, slotSize + 4, 10, 10);
                 g2d.setColor(new Color(255, 215, 0));
                 g2d.setStroke(new BasicStroke(2.5f));
                 g2d.drawRoundRect(slotX, slotY, slotSize, slotSize, 8, 8);

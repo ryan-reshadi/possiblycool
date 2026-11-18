@@ -110,7 +110,20 @@ public class Projectile extends VisualObject {
     @Override
     public void draw(Graphics g) {
         if (removed) return;
-        g.setColor(color != null ? color : Color.YELLOW);
-        g.fillOval(x, y, width, height);
+        Graphics2D g2 = (Graphics2D) g.create();
+        try {
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            Color c = color != null ? color : Color.YELLOW;
+            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 60));
+            g2.fillOval(x - 3, y - 3, width + 6, height + 6);
+            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 120));
+            g2.fillOval(x - 1, y - 1, width + 2, height + 2);
+            g2.setColor(c);
+            g2.fillOval(x, y, width, height);
+            g2.setColor(new Color(255, 255, 255, 180));
+            g2.fillOval(x + 2, y + 2, Math.max(2, width / 3), Math.max(2, height / 3));
+        } finally {
+            g2.dispose();
+        }
     }
 }

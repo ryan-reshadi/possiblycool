@@ -2,6 +2,8 @@ package Objects.EnemyClasses;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
 public class MeleeEnemy extends Enemy {
 
@@ -9,10 +11,9 @@ public class MeleeEnemy extends Enemy {
     protected int lastAttackTick = -1;
 
     public MeleeEnemy(int x, int y, int health, int damage, int aggroRange, int speed, int attackRange) {
-        super(x, y, health, damage, aggroRange, "images/baseEnemy.png");
+        super(x, y, 40, 40, health, damage, aggroRange, new Color(200, 50, 50));
         this.speed = speed;
         this.attackRange = attackRange;
-        this.color = new Color(200, 50, 50);
     }
 
     public MeleeEnemy(int x, int y) {
@@ -59,13 +60,32 @@ public class MeleeEnemy extends Enemy {
 
     @Override
     public void draw(Graphics g) {
-        if (this.image != null) {
-            super.draw(g);
-        } else {
-            g.setColor(this.color != null ? this.color : Color.RED);
-            g.fillRect(this.x, this.y, this.width, this.height);
-            g.setColor(Color.BLACK);
-            g.drawRect(this.x, this.y, this.width, this.height);
+        Graphics2D g2 = (Graphics2D) g.create();
+        try {
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            if (this.image != null) {
+                super.draw(g2);
+            } else {
+                Color c = this.color != null ? this.color : Color.RED;
+                // shadow
+                g2.setColor(new Color(0, 0, 0, 60));
+                g2.fillOval(this.x + 2, this.y + this.height - 8, this.width - 4, 8);
+                // body
+                g2.setColor(c);
+                g2.fillRoundRect(this.x + 2, this.y + 2, this.width - 4, this.height - 6, 6, 6);
+                // highlight
+                g2.setColor(new Color(255, 255, 255, 35));
+                g2.fillRoundRect(this.x + 4, this.y + 4, 4, this.height - 12, 2, 2);
+                // outline
+                g2.setColor(new Color(40, 10, 10));
+                g2.drawRoundRect(this.x + 2, this.y + 2, this.width - 4, this.height - 6, 6, 6);
+                // eyes
+                g2.setColor(new Color(255, 220, 120));
+                g2.fillRect(this.x + 8, this.y + 12, 4, 4);
+                g2.fillRect(this.x + this.width - 12, this.y + 12, 4, 4);
+            }
+        } finally {
+            g2.dispose();
         }
     }
 }

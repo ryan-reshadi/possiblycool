@@ -7,7 +7,9 @@ import Objects.VisualObject;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.RenderingHints;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.BiConsumer;
@@ -71,21 +73,40 @@ public class Chest extends VisualObject {
 
     @Override
     public void draw(Graphics g) {
-        if (opened) {
-            g.setColor(new Color(90, 50, 20));
-            g.fillRect(x, y, width, height);
-            g.setColor(Color.GRAY);
-            g.drawRect(x, y, width, height);
-            g.drawString("OPEN", x + 10, y + 22);
-        } else {
-            g.setColor(new Color(160, 82, 45));
-            g.fillRect(x, y, width, height);
-            g.setColor(Color.ORANGE);
-            g.fillRect(x + width / 2 - 4, y + height / 2 - 4, 8, 8); // Gold lock
-            g.setColor(Color.BLACK);
-            g.drawRect(x, y, width, height);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            g.drawString("[Click] Chest", x - 2, y - 5);
+        Graphics2D g2 = (Graphics2D) g.create();
+        try {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            if (opened) {
+                g2.setColor(new Color(70, 40, 18));
+                g2.fillRoundRect(x, y + 6, width, height - 6, 6, 6);
+                g2.setColor(new Color(110, 70, 30));
+                g2.fillRoundRect(x + 2, y + 8, width - 4, height - 10, 4, 4);
+                g2.setColor(new Color(190, 170, 90));
+                g2.fillRect(x + 4, y + 4, width - 8, 6); // lid open
+                g2.setColor(new Color(60, 60, 70));
+                g2.drawRoundRect(x, y + 6, width, height - 6, 6, 6);
+                g2.setFont(new Font("SansSerif", Font.BOLD, 9));
+                g2.setColor(new Color(220, 220, 200));
+                g2.drawString("OPEN", x + 10, y + 28);
+            } else {
+                g2.setColor(new Color(120, 70, 30));
+                g2.fillRoundRect(x, y, width, height, 6, 6);
+                g2.setColor(new Color(170, 110, 55));
+                g2.fillRoundRect(x + 2, y + 2, width - 4, height - 6, 4, 4);
+                g2.setColor(new Color(90, 60, 20));
+                g2.fillRect(x, y + height / 2 - 2, width, 4); // band
+                g2.setColor(new Color(220, 190, 90));
+                g2.fillRoundRect(x + width / 2 - 6, y + height / 2 - 6, 12, 12, 3, 3); // lock
+                g2.setColor(new Color(255, 230, 140));
+                g2.fillOval(x + width / 2 - 2, y + height / 2 - 2, 4, 4);
+                g2.setColor(new Color(50, 30, 15));
+                g2.drawRoundRect(x, y, width, height, 6, 6);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
+                g2.setColor(new Color(240, 230, 200));
+                g2.drawString("[Click] Chest", x - 2, y - 5);
+            }
+        } finally {
+            g2.dispose();
         }
     }
 }

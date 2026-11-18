@@ -4,6 +4,7 @@ import Objects.PlayerEquipment.Abilities.RallyBarricadeAbility;
 import Objects.PlayerEquipment.Abilities.TankShieldBash;
 import Objects.PlayerEquipment.TankSword;
 import Objects.PlayerEquipment.Ultimates.BattleCryUltimate;
+import java.awt.Color;
 
 public class TankPlayer extends Player {
 
@@ -14,7 +15,8 @@ public class TankPlayer extends Player {
         this.maxRolls = 1;
         this.rolls = 1;
         this.setInnateArmorReduction(0.25);
-        this.setImgPath("images/rus.jpg");
+        this.color = new Color(190, 170, 120);
+        this.setImgPath(null);
         giveStartingLoadout();
     }
 

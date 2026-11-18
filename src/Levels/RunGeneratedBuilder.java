@@ -29,6 +29,7 @@ import Objects.Terrain.BossDoor;
 import Objects.Terrain.Checkpoint;
 import Objects.Terrain.Chest;
 import Objects.Terrain.KeyPickup;
+import Objects.Terrain.MazeExitPortal;
 import Objects.Terrain.PuzzleButton;
 
 import java.awt.Color;
@@ -131,8 +132,32 @@ final class RunGeneratedBuilder {
                 if (player != null) player.saveCheckpoint();
             }));
         }
+        // auto-place key pickups for any ItemKeyLocks if not specified
+        java.util.Map<String, Integer> keyToRoom = new java.util.HashMap<>();
+        for (LevelBlueprint.LockPlacement lp : bp.lockPlacements) {
+            if (lp != null && lp.lock instanceof Levels.Generation.LockSpec.ItemKeyLock) {
+                String kid = ((Levels.Generation.LockSpec.ItemKeyLock) lp.lock).keyId;
+                int roomIdx = Math.max(0, lp.roomIndex - 1);
+                keyToRoom.put(kid, Math.min(roomIdx, Math.max(0, bp.rooms.size() - 1)));
+            }
+        }
+        for (java.util.Map.Entry<String, Integer> e : keyToRoom.entrySet()) {
+            String kid = e.getKey();
+            boolean already = false;
+            for (LevelBlueprint.KeyPickupSpec kp : bp.keyPickups) if (kid.equals(kp.keyId)) { already = true; break; }
+            if (!already && !bp.rooms.isEmpty() && e.getValue() >= 0 && e.getValue() < bp.rooms.size()) {
+                Rect r = bp.rooms.get(e.getValue());
+                bp.keyPickups.add(new LevelBlueprint.KeyPickupSpec(r.centerX() - 10, r.centerY() - 10, kid));
+            } else if (!already && !bp.rooms.isEmpty()) {
+                Rect r0 = bp.rooms.get(0);
+                bp.keyPickups.add(new LevelBlueprint.KeyPickupSpec(r0.centerX() - 10, r0.centerY() - 10, kid));
+            }
+        }
         for (LevelBlueprint.PuzzleButtonSpec pb : bp.puzzleButtons) {
             level.queueAddVisualObject(new PuzzleButton(pb.x, pb.y, pb.puzzleId, level::setPuzzleSolved));
+        }
+        for (LevelBlueprint.MazeExitPortalSpec me : bp.mazeExits) {
+            level.queueAddVisualObject(new MazeExitPortal(me.x, me.y, me.w, me.h, me.puzzleId, level::setPuzzleSolved));
         }
         for (LevelBlueprint.KeyPickupSpec kp : bp.keyPickups) {
             if (player != null) {

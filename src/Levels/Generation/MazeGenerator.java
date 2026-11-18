@@ -24,28 +24,23 @@ public final class MazeGenerator {
 
         // Recursive backtracker (iterative with stack)
         Stack<int[]> stack = new Stack<>();
-        int sr = rng.nextInt(rows), sc = rng.nextInt(cols);
+        int sr = rows / 2, sc = cols / 2;
         grid[sr][sc].visited = true;
         stack.push(new int[]{sr, sc});
-        int[][] dirs = {{-1,0,0},{0,1,1},{1,0,2},{0,-1,3}}; // dr,dc,dir index
+        int[][] dirs = {{-1,0,0},{0,1,1},{1,0,2},{0,-1,3}};
         while (!stack.isEmpty()) {
             int[] cur = stack.peek();
             int r = cur[0], c = cur[1];
             List<Integer> neighbors = new ArrayList<>();
-            // top
             if (r > 0 && !grid[r-1][c].visited) neighbors.add(0);
-            // right
             if (c < cols-1 && !grid[r][c+1].visited) neighbors.add(1);
-            // bottom
             if (r < rows-1 && !grid[r+1][c].visited) neighbors.add(2);
-            // left
             if (c > 0 && !grid[r][c-1].visited) neighbors.add(3);
             if (neighbors.isEmpty()) {
                 stack.pop();
             } else {
                 int dir = neighbors.get(rng.nextInt(neighbors.size()));
                 int nr = r + dirs[dir][0], nc = c + dirs[dir][1];
-                // remove walls between (r,c) and (nr,nc)
                 if (dir == 0) { grid[r][c].wallTop = false; grid[nr][nc].wallBottom = false; }
                 if (dir == 1) { grid[r][c].wallRight = false; grid[nr][nc].wallLeft = false; }
                 if (dir == 2) { grid[r][c].wallBottom = false; grid[nr][nc].wallTop = false; }
@@ -54,34 +49,32 @@ public final class MazeGenerator {
                 stack.push(new int[]{nr, nc});
             }
         }
+        // Force open a horizontal corridor band through middle to help entry (left) to exit (right)
+        int midR = rows / 2;
+        for (int c = 0; c < cols; c++) {
+            grid[midR][c].wallLeft = false;
+            grid[midR][c].wallRight = false;
+            if (midR > 0) grid[midR][c].wallTop = false;
+            if (midR < rows - 1) grid[midR][c].wallBottom = false;
+        }
+        // Also ensure leftmost and rightmost column middle are passable vertically into band
+        if (midR > 0) { grid[midR-1][0].wallBottom = false; grid[midR][0].wallTop = false; }
+        if (midR < rows-1) { grid[midR+1][0].wallTop = false; grid[midR][0].wallBottom = false; }
+        if (midR > 0) { grid[midR-1][cols-1].wallBottom = false; grid[midR][cols-1].wallTop = false; }
+        if (midR < rows-1) { grid[midR+1][cols-1].wallTop = false; grid[midR][cols-1].wallBottom = false; }
 
-        // Convert walls to rects. For each cell, add top wall if exists (except top row edge handling), right wall etc.
         int wallThick = Math.max(6, cellSize / 6);
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 int cx = area.x + c * cellSize;
                 int cy = area.y + r * cellSize;
                 Cell cell = grid[r][c];
-                // top wall
-                if (cell.wallTop) {
-                    walls.add(new Rect(cx, cy, cellSize, wallThick));
-                }
-                // left wall
-                if (cell.wallLeft) {
-                    walls.add(new Rect(cx, cy, wallThick, cellSize));
-                }
-                // right wall (only for last column to avoid duplicates)
-                if (c == cols - 1 && cell.wallRight) {
-                    walls.add(new Rect(cx + cellSize - wallThick, cy, wallThick, cellSize));
-                }
-                // bottom wall (only for last row)
-                if (r == rows - 1 && cell.wallBottom) {
-                    walls.add(new Rect(cx, cy + cellSize - wallThick, cellSize, wallThick));
-                }
+                if (cell.wallTop) walls.add(new Rect(cx, cy, cellSize, wallThick));
+                if (cell.wallLeft) walls.add(new Rect(cx, cy, wallThick, cellSize));
+                if (c == cols - 1 && cell.wallRight) walls.add(new Rect(cx + cellSize - wallThick, cy, wallThick, cellSize));
+                if (r == rows - 1 && cell.wallBottom) walls.add(new Rect(cx, cy + cellSize - wallThick, cellSize, wallThick));
             }
         }
-        // Carve entry/exit openings roughly: open left side of leftmost column middle and right side of rightmost column middle
-        // This helps connectivity to room doors; we’ll also place goal button in a passage cell
         return walls;
     }
 }

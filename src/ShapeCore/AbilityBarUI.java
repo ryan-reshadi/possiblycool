@@ -19,10 +19,10 @@ public class AbilityBarUI {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         // Backdrop
-        g2d.setColor(new Color(20, 20, 25, 190));
-        g2d.fillRoundRect(startX - 6, startY - 6, totalWidth + 12, slotSize + 12, 10, 10);
-        g2d.setColor(new Color(60, 60, 75));
-        g2d.drawRoundRect(startX - 6, startY - 6, totalWidth + 12, slotSize + 12, 10, 10);
+        g2d.setColor(new Color(18, 18, 28, 220));
+        g2d.fillRoundRect(startX - 8, startY - 8, totalWidth + 16, slotSize + 16, 12, 12);
+        g2d.setColor(new Color(90, 70, 140));
+        g2d.drawRoundRect(startX - 8, startY - 8, totalWidth + 16, slotSize + 16, 12, 12);
 
         for (int i = 0; i < 3; i++) {
             int slotX = startX + i * (slotSize + padding);
@@ -31,28 +31,35 @@ public class AbilityBarUI {
             Ability ability = (abilities != null && i < abilities.length) ? abilities[i] : null;
 
             // Slot background
-            g2d.setColor(new Color(35, 38, 48));
+            g2d.setColor(new Color(30, 32, 45));
             g2d.fillRoundRect(slotX, slotY, slotSize, slotSize, 6, 6);
 
             if (ability != null) {
+                double progress = ability.getCooldownProgress(currentTick);
+                boolean ready = progress >= 1.0;
+                if (ready) {
+                    g2d.setColor(new Color(140, 200, 255, 30));
+                    g2d.fillRoundRect(slotX - 1, slotY - 1, slotSize + 2, slotSize + 2, 8, 8);
+                }
                 // Ability icon
-                g2d.setColor(ability.getIconColor() != null ? ability.getIconColor() : new Color(140, 60, 190));
+                Color ic = ability.getIconColor() != null ? ability.getIconColor() : new Color(140, 60, 190);
+                g2d.setColor(ic);
                 g2d.fillRoundRect(slotX + 5, slotY + 5, slotSize - 10, slotSize - 10, 4, 4);
+                g2d.setColor(new Color(255, 255, 255, 60));
+                g2d.fillRoundRect(slotX + 7, slotY + 7, 6, slotSize - 14, 2, 2);
 
                 // Cooldown shadow overlay
-                double progress = ability.getCooldownProgress(currentTick);
-                if (progress < 1.0) {
+                if (!ready) {
                     Composite oldComp = g2d.getComposite();
-                    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.65f));
-                    g2d.setColor(Color.BLACK);
-
+                    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
+                    g2d.setColor(new Color(0, 0, 0));
                     int arcAngle = (int) Math.round((1.0 - progress) * 360);
                     Arc2D.Double cdArc = new Arc2D.Double(slotX + 2, slotY + 2, slotSize - 4, slotSize - 4, 90, arcAngle, Arc2D.PIE);
                     g2d.fill(cdArc);
                     g2d.setComposite(oldComp);
                 }
 
-                g2d.setColor(Color.WHITE);
+                g2d.setColor(ready ? new Color(200, 230, 255) : new Color(200, 200, 210));
                 g2d.drawRoundRect(slotX + 5, slotY + 5, slotSize - 10, slotSize - 10, 4, 4);
             }
 
@@ -61,7 +68,7 @@ public class AbilityBarUI {
             g2d.setColor(new Color(255, 230, 100));
             g2d.drawString(keys[i], slotX + 4, slotY + 13);
 
-            g2d.setColor(new Color(90, 95, 110));
+            g2d.setColor(new Color(120, 100, 180));
             g2d.drawRoundRect(slotX, slotY, slotSize, slotSize, 6, 6);
         }
     }

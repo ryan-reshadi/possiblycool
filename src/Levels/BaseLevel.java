@@ -250,7 +250,7 @@ public class BaseLevel {
     }
 
     public void render(Graphics2D g, int tickCount) {
-        drawBG(g);
+        drawBG(g, tickCount);
         Graphics2D worldGraphics = (Graphics2D) g.create();
         try {
             worldGraphics.translate(-cameraX, -cameraY);
@@ -297,6 +297,8 @@ public class BaseLevel {
                     }
                 } else if (obj instanceof KeyPickup) {
                     ((KeyPickup) obj).checkPickup(this.player);
+                } else if (obj instanceof MazeExitPortal) {
+                    ((MazeExitPortal) obj).check(this.player);
                 } else if (obj instanceof DroppedItem) {
                     ((DroppedItem) obj).checkPickup(this.player);
                 }
@@ -433,12 +435,40 @@ public class BaseLevel {
         }
     }
 
-    public void drawBG(Graphics g) {
+    public void drawBG(Graphics g, int tickCount) {
         if (this.backgroundImage != null) {
             g.drawImage(this.backgroundImage, this.bgX, this.bgY, null);
         } else {
-            g.setColor(this.backgroundColor != null ? this.backgroundColor : new Color(30, 30, 35));
-            g.fillRect(0, 0, Viewport.WIDTH, Viewport.HEIGHT);
+            Color base = this.backgroundColor != null ? this.backgroundColor : new Color(30, 30, 35);
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(base);
+                g2.fillRect(0, 0, Viewport.WIDTH, Viewport.HEIGHT);
+                // subtle vignette
+                RadialGradientPaint vignette = new RadialGradientPaint(
+                        new java.awt.geom.Point2D.Float(Viewport.WIDTH / 2f, Viewport.HEIGHT / 2f),
+                        Math.max(Viewport.WIDTH, Viewport.HEIGHT) * 0.75f,
+                        new float[]{0f, 1f},
+                        new Color[]{new Color(0, 0, 0, 0), new Color(0, 0, 0, 120)});
+                g2.setPaint(vignette);
+                g2.fillRect(0, 0, Viewport.WIDTH, Viewport.HEIGHT);
+                // faint magical motes
+                long seed = 1337L;
+                for (int i = 0; i < 28; i++) {
+                    long s = seed + i * 7919L;
+                    int mx = (int)((s * 9301L + 49297L) % 233280L) % Viewport.WIDTH;
+                    int my = (int)((s * 233L + 7L) % 233280L) % Viewport.HEIGHT;
+                    double t = (tickCount + i * 17) * 0.03;
+                    int ox = (int)(Math.sin(t) * 6);
+                    int oy = (int)(Math.cos(t * 0.8) * 4);
+                    int alpha = 18 + (int)(8 * Math.sin(t * 1.3));
+                    g2.setColor(new Color(140, 120, 220, Math.max(6, alpha)));
+                    g2.fillOval(mx + ox, my + oy, 2, 2);
+                }
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
@@ -468,12 +498,13 @@ public class BaseLevel {
 
         Set<Integer> pressedKeys = input.getHeldKeys();
         int speed = (int) player.getSpeed();
+        if (isPlayerInSlowHazard()) speed = Math.max(1, speed / 2);
         int moveX = 0;
         int moveY = 0;
 
         // Roll mechanic: Space (32)
         if (input.wasPressed(32) && player.rolls > 0) {
-            int rollDist = 40;
+            int rollDist = isPlayerInSlowHazard() ? 20 : 40;
             if (pressedKeys.contains(65)) moveX -= rollDist * speed;
             if (pressedKeys.contains(68)) moveX += rollDist * speed;
             if (pressedKeys.contains(87)) moveY -= rollDist * speed;
@@ -668,6 +699,19 @@ public class BaseLevel {
     public void setHazardZones(List<LevelBlueprint.HazardZoneSpec> zones) {
         hazardZones.clear();
         if (zones != null) hazardZones.addAll(zones);
+    }
+
+    private boolean isPlayerInSlowHazard() {
+        if (player == null) return false;
+        int cx = player.getX() + player.getWidth() / 2;
+        int cy = player.getY() + player.getHeight() / 2;
+        for (LevelBlueprint.HazardZoneSpec hz : hazardZones) {
+            if (hz == null || hz.rect == null) continue;
+            if (cx >= hz.rect.left() && cx < hz.rect.right() && cy >= hz.rect.top() && cy < hz.rect.bottom()) {
+                if (hz.effects.contains(LevelBlueprint.HazardEffectType.SLOW)) return true;
+            }
+        }
+        return false;
     }
 
     public void setPuzzleSolved(String id) {

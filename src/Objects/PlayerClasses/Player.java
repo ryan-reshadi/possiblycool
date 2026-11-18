@@ -355,12 +355,20 @@ public class Player extends Entity {
         Graphics2D g2d = (Graphics2D) g;
         MeleeWeapon weapon = getEquippedMeleeWeapon();
         if (weapon != null && weapon.getAttackBox() != null && weapon.isInAnimation()) {
+            g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
             if (weapon.isAttackDamageApplied()) {
-                g2d.setColor(new Color(255, 60, 60, 160));
+                g2d.setColor(new Color(255, 90, 90, 180));
+                g2d.fill(weapon.getAttackBox());
+                g2d.setColor(new Color(255, 200, 120, 120));
+                g2d.setStroke(new java.awt.BasicStroke(2f));
+                g2d.draw(weapon.getAttackBox());
+                g2d.setStroke(new java.awt.BasicStroke(1f));
             } else {
-                g2d.setColor(new Color(255, 255, 255, 120));
+                g2d.setColor(new Color(200, 220, 255, 100));
+                g2d.fill(weapon.getAttackBox());
+                g2d.setColor(new Color(255, 255, 255, 160));
+                g2d.draw(weapon.getAttackBox());
             }
-            g2d.fill(weapon.getAttackBox());
         }
     }
 
@@ -369,7 +377,42 @@ public class Player extends Entity {
     @Override
     public void render(Graphics2D g, int tickCount) {
         renderAttackEffects(g);
-        draw(g);
+        drawPlayer(g, tickCount);
+    }
+
+    private void drawPlayer(Graphics2D g2d, int tickCount) {
+        g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        int px = this.x, py = this.y, pw = this.width, ph = this.height;
+        Color base = this.color != null ? this.color : new Color(120, 120, 140);
+        // shadow
+        g2d.setColor(new Color(0, 0, 0, 70));
+        g2d.fillOval(px + 4, py + ph - 10, pw - 8, 10);
+        // body
+        g2d.setColor(base);
+        g2d.fillRoundRect(px + 6, py + 10, pw - 12, ph - 14, 8, 8);
+        // head
+        g2d.setColor(brighten(base, 30));
+        g2d.fillOval(px + 10, py + 2, pw - 20, 18);
+        // highlight
+        g2d.setColor(new Color(255, 255, 255, 40));
+        g2d.fillRoundRect(px + 8, py + 12, 6, ph - 20, 3, 3);
+        // outline
+        g2d.setColor(darken(base, 60));
+        g2d.setStroke(new java.awt.BasicStroke(1.5f));
+        g2d.drawRoundRect(px + 6, py + 10, pw - 12, ph - 14, 8, 8);
+        g2d.drawOval(px + 10, py + 2, pw - 20, 18);
+        g2d.setStroke(new java.awt.BasicStroke(1f));
+        // eyes
+        g2d.setColor(new Color(20, 20, 30));
+        g2d.fillRect(px + 16, py + 10, 3, 3);
+        g2d.fillRect(px + pw - 19, py + 10, 3, 3);
+    }
+
+    private static Color brighten(Color c, int amt) {
+        return new Color(Math.min(255, c.getRed() + amt), Math.min(255, c.getGreen() + amt), Math.min(255, c.getBlue() + amt));
+    }
+    private static Color darken(Color c, int amt) {
+        return new Color(Math.max(0, c.getRed() - amt), Math.max(0, c.getGreen() - amt), Math.max(0, c.getBlue() - amt));
     }
 
     // ── Checkpoint ──────────────────────────────────────────────────────────

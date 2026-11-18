@@ -12,10 +12,7 @@ public class KeyPickup extends VisualObject {
     private boolean picked = false;
 
     public KeyPickup(int x, int y, String keyId, Consumer<String> onPickup) {
-        super(x, y, null);
-        this.width = 20;
-        this.height = 20;
-        this.hitbox = new Rectangle2D.Double(x, y, width, height);
+        super(x, y, 20, 20, (java.awt.Color) null);
         this.keyId = keyId == null ? "" : keyId;
         this.onPickup = onPickup;
     }

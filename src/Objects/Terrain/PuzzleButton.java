@@ -12,10 +12,7 @@ public class PuzzleButton extends VisualObject {
     private boolean solved = false;
 
     public PuzzleButton(int x, int y, String puzzleId, Consumer<String> onSolved) {
-        super(x, y, null);
-        this.width = 32;
-        this.height = 32;
-        this.hitbox = new Rectangle2D.Double(x, y, width, height);
+        super(x, y, 32, 32, (java.awt.Color) null);
         this.puzzleId = puzzleId == null ? "" : puzzleId;
         this.onSolved = onSolved;
     }

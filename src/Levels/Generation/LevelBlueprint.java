@@ -25,6 +25,7 @@ public final class LevelBlueprint {
     /** Additive: puzzle button placements (minimal). */
     public final List<PuzzleButtonSpec> puzzleButtons = new ArrayList<>();
     public final List<KeyPickupSpec> keyPickups = new ArrayList<>();
+    public final List<MazeExitPortalSpec> mazeExits = new ArrayList<>();
     public BossSpec boss;
 
     public enum EnemyKind { MELEE, BERSERKER, RANGED, TANK, BOSS }
@@ -102,6 +103,14 @@ public final class LevelBlueprint {
         public final String keyId;
         public KeyPickupSpec(int x, int y, String keyId) {
             this.x = x; this.y = y; this.keyId = keyId == null ? "" : keyId;
+        }
+    }
+
+    public static final class MazeExitPortalSpec {
+        public final int x, y, w, h;
+        public final String puzzleId;
+        public MazeExitPortalSpec(int x, int y, int w, int h, String puzzleId) {
+            this.x = x; this.y = y; this.w = w; this.h = h; this.puzzleId = puzzleId;
         }
     }
 
